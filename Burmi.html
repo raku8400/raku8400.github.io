@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Burmi</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha512-E8QSvWZ0eCLGk4km3hxSsNmGWbLtSCSUcewDQPQWZF6pEU8GlT8a5fF32wOl1i8ftdMhssTrF/OhyGWwonTcXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      // TODO Weitere Buttons für Next/Previous und Stop fehlen noch
+      // TODO Playmode (Shuffle, Serial) fehlt noch
+      // TODO Tidal Webpage ist noch cool
+      // TODO Passwörter aus Schlüsselbund o.ä. lesen
+      // TODO Initialisierung zu Beginn fehlt noch (is_running, player etc).
+      // TODO FavIcon fehlt noch
+      //
+      // Lower Prio:
+      // TODO Letzter Part der IP (z.Zt. 115) sollte noch dynamisch ermittelt werden
+      //
+      // IP adress in local network under which Burmi MC can be reached
+      var IP = "192.168.1.115";
+      //
+      // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
+      var IS_SONG_PLAYING = false;
+      //
+      window.onload = initPlayer;
+      //
+      //TODO Document
+      function initPlayer() {
+        //isSongPlayed();
+        return;
+      }
+      //
+      // Encodes the given URL and returns the result
+      function getEncodedURL(url) {
+        const charsAndEncodings = {
+          "\"": "%22",
+          ",": "%2C",
+          ":": "%3A",
+          "{": "%7B",
+          "}": "%7D",
+          " ": "%20"
+        };
+        for (const [key, value] of Object.entries(charsAndEncodings)) {
+          url = url.replaceAll(key, value)
+        }
+        return url
+      }
+      //
+      // TODO Document
+      function waitForMs(ms) {
+        var start = new Date().getTime();
+        var end = start;
+        while(end < start + ms) {
+          end = new Date().getTime();
+        }
+      }
+      //
+      // TODO Document
+      //function dummyCallback(returnText) {
+      //  console.log("in Dummy Callback: " + returnText)
+      //  return;
+      //}
+      //
+      // Retrieves whether or no the currently active song is being played
+      function isSongPlayed() {
+        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioGetInfo" : {"Method" : "GetPlayState"}}}'
+        executeGetRequest(cmd);
+      }
+      //
+      // Starts or resumes playing of the currently active song
+      function playSong() {
+        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Play"}}}'
+        executeGetRequest(cmd);
+        IS_SONG_PLAYING = true;
+        updateAllIcons();
+        window.location.replace("Burmi.html");
+      }
+      //
+      // Pauses playing of the currently active song
+      function pauseSong() {
+        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Pause"}}}'
+        executeGetRequest(cmd);
+        IS_SONG_PLAYING = false;
+        updateAllIcons();
+        window.location.replace("Burmi.html");
+      }
+      //
+      // Updates all icons
+      function updateAllIcons() {
+        document.getElementById("PlaySong").src = IS_SONG_PLAYING ? "PlayDisabled.PNG" : "Play.PNG";
+        document.getElementById("PauseSong").src = IS_SONG_PLAYING ? "Pause.PNG" : "PauseDisabled.PNG";
+      }
+      //
+      // TODO ab hier funktioniert es noch nicht
+      /*
+      function getRadioPlaylist() {
+        task = "dda687c40f585a0b44aac0d408228e171e52bed2";
+        param = "%7B%0A%09%22Media_Obj%22%20%3A%20%22Radio%22%2C%0A%09%22AudioPlayList%22%20%3A%20%0A%09%09%7B%0A%09%09%09%22Method%22%20%3A%20%22GetPlayList%22%0A%09%09%7D%0A%7D";
+        resp = executeGetRequest(task, param);
+        updatePlaylist(resp); 
+      }
+      function getCdPlaylist() {
+        task = "dda687c40f585a0b44aac0d408228e171e52bed2";
+        param = "%7B%0A%09%22Media_Obj%22%20%3A%20%22Radio%22%2C%0A%09%22AudioPlayList%22%20%3A%20%0A%09%09%7B%0A%09%09%09%22Method%22%20%3A%20%22GetPlayList%22%0A%09%09%7D%0A%7D";
+        resp = executeGetRequest(task, param);
+        updatePlaylist(resp); 
+      }
+      function getTidalPlaylist() {
+        task = "5336f7e0c0cd9247e37d9a8a1ef4b3ad75adb06c";
+        param = "%7B%0A%09%22Media_Obj%22%20%3A%20%22WiMP%20Player%22%2C%0A%09%22AudioPlayList%22%20%3A%20%0A%09%09%7B%0A%09%09%09%22Method%22%20%3A%20%22GetPlayList%22%0A%09%09%7D%0A%7D";
+        resp = executeGetRequest(task, param);
+        updatePlaylist(resp); 
+      }
+      function updatePlaylist(data) {
+        var json = JSON.parse(data);
+        console.log(json.Entries)
+        document.querySelector("#playlist").textContent = json.Entries;
+      }
+      */
+      //
+      // TODO Document
+      function executeGetRequest(cmd) {
+        encodedCmd = getEncodedURL(cmd);
+        authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012";
+        let authStringHash = CryptoJS.SHA1(authString);
+        // Prefix of URL (part directly after the IP/Host)
+        var URL_PRE = "/json.php?Json=Linionik_HTML5_[MC_JSON]_";
+        // Suffix of URL (part directly before the param)
+        var URL_SUF = "_[MC_JSON]_";
+        url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
+        //window.location.href = url;
+        apiResultElement = apiResult
+        //popupWindow = window.open(url,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
+        console.log("url");
+        console.log(url);
+        // https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
+        const frame = document.getElementById("apiResult");
+        var anyVariableObject = "apiBurmiCall";
+        frame.contentWindow.postMessage(anyVariableObject, "*");
+
+        // Execute API call and divert the result to the IFRAME
+        frame.src = url;
+        // TODO Better wait?
+        waitForMs(2000); 
+        // TODO Read content of window for future use
+        var apiResult = document.getElementById('apiResult').contentWindow.document.body.innerHTML;
+        //apiResult = popupWindow.outerText;
+        console.log("apiResult");
+        //console.log(popupWindow.outerText);
+        //popupWindow.close();
+        /*
+        Because of CORS and the like we need to do a pseudo navigate (hidden would be better)
+        let xmlHttpReq = new XMLHttpRequest();
+        // Unfortunately Burmi API does not support CORS. In order to not flood the console, let's just swallow every error
+        try {
+          xmlHttpReq.onreadystatechange = function () {
+            if (xmlHttpReq.readyState == 4 && xmlHttpReq.status == 200) {
+              // TODO maybe evaluate the result, e.g. status code = 200?
+              //console.log(xmlHttpReq.HEADERS_RECEIVED);
+              //console.log(xmlHttpReq.status);
+              //console.log(xmlHttpReq.statusText);
+              dummyCallback(xmlHttpReq.responseText);
+            }
+          };
+          xmlHttpReq.open("GET", url, false); // true for asynchronous, false for synchronous
+          //xmlHttpReq.setRequestHeader("Referer", "http://192.168.1.115/html5/big_player.html");
+          xmlHttpReq.send(null);
+          console.log(xmlHttpReq.statusText);
+          console.log(xmlHttpReq.readyState);
+          console.log(xmlHttpReq.status);
+          console.log(xmlHttpReq.responseText);
+        }
+        catch(anyException) {
+          console.log("Exception happened: ");
+          console.log(xmlHttpReq.statusText);
+          console.log(xmlHttpReq.readyState);
+          console.log(xmlHttpReq.status);
+          console.log(xmlHttpReq.responseText);
+        }
+        finally {
+        }
+        */
+      }
+      function change_player(player) {
+        console.log(player)
+        switch (player) {
+          case "local":
+            getCdPlaylist();
+            break;
+          case 'radio':
+            getRadioPlaylist();
+            break;
+          case 'tidal':
+            getTidalPlaylist();
+            break;
+          default:
+            //TODO Errorhandling is missing 
+        }
+      }
+    </script>
+    <noscript>Ohne aktiviertes JavaScript läuft die Seite nicht.<BR>
+    You need to enable JavaScript to make this page running.</noscript>
+  </head>
+  <body>
+    <table>
+      <tr>
+        <td onclick="playSong()"><img id="PlaySong" alt="Play"></td>
+        <td onclick="pauseSong()"><img id="PauseSong" alt="Pause"></td>
+      </tr>
+    </table>
+    <br>
+    <table>
+      <tr>
+        <th>Player</th>
+        <th>Playlist</th>
+        <th>Track</th>
+      </tr>
+      <tr>
+        <td onclick="change_player('local')">CD Player</td>
+        <td id="playlist" rowspan="3">hier dann die Liste</td>
+        <td rowspan="3">hier dann der aktuelle Track</td>
+      </tr>
+      <tr>
+        <td onclick="change_player('radio')">Internet Radio</td>
+      </tr>
+      <tr>
+        <td onclick="change_player('tidal')">Tidal</td>
+      </tr>
+    </table>
+    <iframe id="apiResult" src="./BurmiEmpty.html" title="API Result">
+    </iframe>
+    <br>
+    <br>
+    <br>
+    <small>© Copyright Diana und Ralf Kulik 2022 - 2024, use at your own risk</small>
+  </body>
+</html>
