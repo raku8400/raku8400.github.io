@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.007</title>
+    <title>Burmi V1.008</title>
       <style>
       body { background-color: #004242 }
       </style>
@@ -72,7 +72,7 @@
       // Starts or resumes playing of the currently active song
       function playSong() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Play"}}}'
-        executeGetRequest2(cmd);
+        executeGetRequest(cmd);
         IS_SONG_PLAYING = true;
         //updateAllIcons();
         //window.location.replace("Burmi.html");
@@ -81,7 +81,7 @@
       // Pauses playing of the currently active song
       function pauseSong() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Pause"}}}'
-        executeGetRequest2(cmd);
+        executeGetRequest(cmd);
         IS_SONG_PLAYING = false;
         //updateAllIcons();
         //window.location.replace("Burmi.html");
@@ -131,15 +131,15 @@
         // Suffix of URL (part directly before the param)
         var URL_SUF = "_[MC_JSON]_";
         url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
-        const response = await fetch(url, {
-          method: 'POST',
-          body: myBody, // string or object
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        //const myJson = await response.json(); //extract JSON from the http response
-        // do something with myJson
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+             if (this.readyState == 4 && this.status == 200) {
+                 alert(this.responseText);
+             }
+        };
+        xhttp.open("POST", url, true);
+        xhttp.setRequestHeader("Content-type", "application/json");
+        xhttp.send("");
       }
 
       
