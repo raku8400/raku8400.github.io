@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.011</title>
+    <title>Burmi V1.012</title>
       <style>
       body { background-color: #004242 }
       </style>
@@ -138,16 +138,16 @@
                  alert(this.responseText);
              }
         };
+        */
         console.log("url POST");
         console.log(url);
+        /*
         xhttp.open("POST", url, true);
         xhttp.setRequestHeader("Content-type", "application/json");
         //xhttp.send("");
         */
         fetch(url, {
-          method: "POST",
-          body: JSON.stringify(""),
-          headers: {"Content-type": "application/json; charset=UTF-8"}
+          method: "POST"
         })
       }
 
