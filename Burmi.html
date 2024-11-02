@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.002</title>
+    <title>Burmi V1.003</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha512-E8QSvWZ0eCLGk4km3hxSsNmGWbLtSCSUcewDQPQWZF6pEU8GlT8a5fF32wOl1i8ftdMhssTrF/OhyGWwonTcXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
       // TODO Weitere Buttons für Next/Previous und Stop fehlen noch
@@ -138,13 +138,14 @@
         frame.contentWindow.postMessage(anyVariableObject, "*");
 
         // Execute API call and divert the result to the IFRAME
-        frame.src = url;
+        // TODO Ralf auskommentiert 02.11.2024 wg Mixed Content (Http/https Problematik
+        //frame.src = url;
         // TODO Better wait?
-        waitForMs(2000); 
+        //waitForMs(2000); 
         // TODO Read content of window for future use
-        var apiResult = document.getElementById('apiResult').contentWindow.document.body.innerHTML;
+        //var apiResult = document.getElementById('apiResult').contentWindow.document.body.innerHTML;
         //apiResult = popupWindow.outerText;
-        console.log("apiResult");
+        //console.log("apiResult");
         //console.log(popupWindow.outerText);
         //popupWindow.close();
         /*
