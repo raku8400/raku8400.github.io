@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.006</title>
+    <title>Burmi V1.007</title>
       <style>
       body { background-color: #004242 }
       </style>
@@ -123,7 +123,15 @@
       // TODO Document
       // Source: https://stackoverflow.com/questions/36975619/how-to-call-a-rest-web-service-api-from-javascript
       function executeGetRequest2(cmd) {
-        const response = await fetch('http://192.168.1.{{urlSuffix}}/json.php?Json=Linionik_HTML5_[MC_JSON]_af41ad29fc44bc66f96802ae8828dce86c901a00_[MC_JSON]_%7B%22Media_Obj%22%20%3A%20%22ActiveInput%22%2C%22Method%22%20%3A%20%22ActiveInputCmd%22%2C%22Parameters%22%20%3A%20%7B%22AudioControl%22%20%3A%20%7B%22Method%22%20%3A%20%22Pause%22%7D%7D%7D', {
+        encodedCmd = getEncodedURL(cmd);
+        authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012";
+        let authStringHash = CryptoJS.SHA1(authString);
+        // Prefix of URL (part directly after the IP/Host)
+        var URL_PRE = "/json.php?Json=Linionik_HTML5_[MC_JSON]_";
+        // Suffix of URL (part directly before the param)
+        var URL_SUF = "_[MC_JSON]_";
+        url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
+        const response = await fetch(url, {
           method: 'POST',
           body: myBody, // string or object
           headers: {
