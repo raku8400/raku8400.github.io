@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.008</title>
+    <title>Burmi V1.009</title>
       <style>
       body { background-color: #004242 }
       </style>
@@ -72,7 +72,7 @@
       // Starts or resumes playing of the currently active song
       function playSong() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Play"}}}'
-        executeGetRequest(cmd);
+        executeGetRequestPost(cmd);
         IS_SONG_PLAYING = true;
         //updateAllIcons();
         //window.location.replace("Burmi.html");
@@ -81,7 +81,7 @@
       // Pauses playing of the currently active song
       function pauseSong() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Pause"}}}'
-        executeGetRequest(cmd);
+        executeGetRequestPost(cmd);
         IS_SONG_PLAYING = false;
         //updateAllIcons();
         //window.location.replace("Burmi.html");
@@ -122,7 +122,7 @@
       //
       // TODO Document
       // Source: https://stackoverflow.com/questions/36975619/how-to-call-a-rest-web-service-api-from-javascript
-      function executeGetRequest2(cmd) {
+      function executeGetRequestPost(cmd) {
         encodedCmd = getEncodedURL(cmd);
         authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012";
         let authStringHash = CryptoJS.SHA1(authString);
@@ -137,6 +137,8 @@
                  alert(this.responseText);
              }
         };
+        console.log("url");
+        console.log(url);
         xhttp.open("POST", url, true);
         xhttp.setRequestHeader("Content-type", "application/json");
         xhttp.send("");
