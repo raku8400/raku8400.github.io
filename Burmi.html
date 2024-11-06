@@ -87,6 +87,26 @@
         //window.location.replace("Burmi.html");
       }
       //
+      // Moves to the next played song
+      function moveNext() {
+        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "SkipForward"}}}'
+        executeGetRequestPost(cmd);
+        IS_SONG_PLAYING = false;
+        //updateAllIcons();
+        //window.location.replace("Burmi.html");
+      }
+      //
+      // Moves to the next played song
+      function movePrevious() {
+        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "BackForward"}}}'
+        executeGetRequestPost(cmd);
+        IS_SONG_PLAYING = false;
+        //updateAllIcons();
+        //window.location.replace("Burmi.html");
+      }
+
+
+      //
       // Updates all icons
       function updateAllIcons() {
         document.getElementById("PlaySong").src = IS_SONG_PLAYING ? "PlayDisabled.PNG" : "Play.PNG";
@@ -146,9 +166,7 @@
         xhttp.setRequestHeader("Content-type", "application/json");
         //xhttp.send("");
         */
-        fetch(url, {
-          method: "POST"
-        })
+        fetch(url, {method: "POST"})
       }
 
       
@@ -238,8 +256,10 @@
   <body>
     <table>
       <tr>
-        <td onclick="playSong()"><img id="PlaySong" alt="Play" src="Play.PNG"></td>
-        <td onclick="pauseSong()"><img id="PauseSong" alt="Pause" src="Pause.PNG"></td>
+        <td onclick="movePrevious()"><img id="PlayPrevious" alt="Play" src="Previous.png"></td>
+        <td onclick="playSong()"><img id="PlaySong" alt="Play" src="Play.png"></td>
+        <td onclick="pauseSong()"><img id="PauseSong" alt="Pause" src="Pause.png"></td>
+        <td onclick="moveNext()"><img id="PlayNext" alt="Play" src="Next.png"></td>
       </tr>
     </table>
     <br>
