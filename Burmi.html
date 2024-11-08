@@ -2,33 +2,32 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.012</title>
+    <title>Burmi V1.014</title>
       <style>
-      body { background-color: #004242 }
+        body { background-color: #004242 }
       </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha512-E8QSvWZ0eCLGk4km3hxSsNmGWbLtSCSUcewDQPQWZF6pEU8GlT8a5fF32wOl1i8ftdMhssTrF/OhyGWwonTcXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
-      // TODO Weitere Buttons für Next/Previous und Stop fehlen noch
       // TODO Playmode (Shuffle, Serial) fehlt noch
       // TODO Tidal Webpage ist noch cool
-      // TODO Passwörter aus Schlüsselbund o.ä. lesen
       // TODO Initialisierung zu Beginn fehlt noch (is_running, player etc).
       // TODO FavIcon fehlt noch
+      // Die Warnungen der Browser-Konsole muessen noch raus
       //
       // Lower Prio:
-      // TODO Letzter Part der IP (z.Zt. 115) sollte noch dynamisch ermittelt werden
+      // TODO Letzter Part der IP (z.Zt. 106, war auch schon 115) sollte noch dynamisch ermittelt werden
       //
-      // IP adress in local network under which Burmi MC can be reached
+      // IP adress in local network under which Burmi MC can be reached - look it up in the app
       var IP = "192.168.1.106";
       //
       // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
-      var IS_SONG_PLAYING = false;
+      var IS_TRACK_PLAYING = false;
       //
       window.onload = initPlayer;
       //
       //TODO Document
       function initPlayer() {
-        //isSongPlayed();
+        isSongPlayed();
         return;
       }
       //
@@ -48,49 +47,59 @@
         return url
       }
       //
-      // TODO Document
-      function waitForMs(ms) {
-        var start = new Date().getTime();
-        var end = start;
-        while(end < start + ms) {
-          end = new Date().getTime();
-        }
-      }
-      //
-      // TODO Document
-      //function dummyCallback(returnText) {
-      //  console.log("in Dummy Callback: " + returnText)
-      //  return;
-      //}
-      //
       // Retrieves whether or no the currently active song is being played
       function isSongPlayed() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioGetInfo" : {"Method" : "GetPlayState"}}}'
-        executeGetRequest(cmd);
+        var a = executeGetRequest(cmd);
+        console.log("API Result isSongPlayed: " + a);
+        //IS_TRACK_PLAYING;
       }
       //
-      // Starts or resumes playing of the currently active song
-      function playSong() {
+      // Starts or resumes playing of the currently active track
+      function trackPlay() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Play"}}}'
-        executeGetRequestPost(cmd);
-        IS_SONG_PLAYING = true;
-        //updateAllIcons();
-        //window.location.replace("Burmi.html");
+        executeGetRequest(cmd);
+        updateAllIcons();
       }
       //
-      // Pauses playing of the currently active song
-      function pauseSong() {
+      // Pauses playing of the currently active track
+      function trackPause() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Pause"}}}'
-        executeGetRequestPost(cmd);
-        IS_SONG_PLAYING = false;
-        //updateAllIcons();
-        //window.location.replace("Burmi.html");
+        executeGetRequest(cmd);
+        updateAllIcons();
       }
       //
-      // Updates all icons
+      // Stops playing any track
+      function trackStop() {
+        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Stop"}}}'
+        executeGetRequest(cmd);
+        updateAllIcons();
+      }
+      //
+      // Moves to the next played track
+      function trackNext() {
+        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "SkipForward"}}}'
+        executeGetRequest(cmd);
+        updateAllIcons();
+      }
+      //
+      // Moves to the previous played track
+      function trackPrevious() {
+        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "BackForward"}}}'
+        executeGetRequest(cmd);
+        updateAllIcons();
+      }
+
+
+      //
+      // Updates all icons according to the current state of Burmi
       function updateAllIcons() {
-        document.getElementById("PlaySong").src = IS_SONG_PLAYING ? "PlayDisabled.PNG" : "Play.PNG";
-        document.getElementById("PauseSong").src = IS_SONG_PLAYING ? "Pause.PNG" : "PauseDisabled.PNG";
+        //isSongPlayed();
+        document.getElementById("TrackPlay").src = IS_TRACK_PLAYING ? "./Icons/Play_PlayInActive.png" : "./Icons/Play_PlayActive.png";
+        document.getElementById("TrackStop").src = "./Icons/Play_StopActive.png";
+        document.getElementById("TrackPause").src = IS_TRACK_PLAYING ? "./Icons/Play_PauseActive.png" : "./Icons/Play_PauseInActive.png";
+        document.getElementById("TrackPrevious").src = "./Icons/Play_PreviousActive.png";
+        document.getElementById("TrackNext").src = "./Icons/Play_NextActive.png";
       }
       //
       // TODO ab hier funktioniert es noch nicht
@@ -121,37 +130,10 @@
       */
       //
       // TODO Document
-      // Source: https://stackoverflow.com/questions/36975619/how-to-call-a-rest-web-service-api-from-javascript
-      function executeGetRequestPost(cmd) {
-        encodedCmd = getEncodedURL(cmd);
-        authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012";
-        let authStringHash = CryptoJS.SHA1(authString);
-        // Prefix of URL (part directly after the IP/Host)
-        var URL_PRE = "/json.php?Json=Linionik_HTML5_[MC_JSON]_";
-        // Suffix of URL (part directly before the param)
-        var URL_SUF = "_[MC_JSON]_";
-        url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
-        /*
-        var xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = function() {
-             if (this.readyState == 4 && this.status == 200) {
-                 alert(this.responseText);
-             }
-        };
-        */
-        console.log("url POST");
-        console.log(url);
-        /*
-        xhttp.open("POST", url, true);
-        xhttp.setRequestHeader("Content-type", "application/json");
-        //xhttp.send("");
-        */
-        fetch(url, {
-          method: "POST"
-        })
-      }
-
-      
+      // Returns the body of the response as string
+      // Sources:
+      // https://stackoverflow.com/questions/36975619/how-to-call-a-rest-web-service-api-from-javascript
+      // https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
       function executeGetRequest(cmd) {
         encodedCmd = getEncodedURL(cmd);
         authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012";
@@ -161,30 +143,16 @@
         // Suffix of URL (part directly before the param)
         var URL_SUF = "_[MC_JSON]_";
         url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
-        //window.location.href = url;
-        apiResultElement = apiResult
-        //popupWindow = window.open(url,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
-        console.log("url");
-        console.log(url);
-        // https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
+        //console.log("API Request: " +url);
         const frame = document.getElementById("apiResult");
-        var anyVariableObject = "apiBurmiCall";
-        frame.contentWindow.postMessage(anyVariableObject, "*");
-
         // Execute API call and divert the result to the IFRAME
-        // TODO Ralf auskommentiert 02.11.2024 wg Mixed Content (Http/https Problematik
-        //frame.src = url;
-        // TODO Better wait?
-        //waitForMs(2000); 
-        // TODO Read content of window for future use
-        //var apiResult = document.getElementById('apiResult').contentWindow.document.body.innerHTML;
-        //apiResult = popupWindow.outerText;
-        //console.log("apiResult");
-        //console.log(popupWindow.outerText);
-        //popupWindow.close();
+        var resp = url;
+        // TODO gelegentlich noch rausfinden, warum es diese Zeile zwingend braucht
+        frame.src = resp;
+        console.log("API Result: " + resp);
+        return resp;
+        
         /*
-        Because of CORS and the like we need to do a pseudo navigate (hidden would be better)
-        let xmlHttpReq = new XMLHttpRequest();
         // Unfortunately Burmi API does not support CORS. In order to not flood the console, let's just swallow every error
         try {
           xmlHttpReq.onreadystatechange = function () {
@@ -203,6 +171,7 @@
           console.log(xmlHttpReq.readyState);
           console.log(xmlHttpReq.status);
           console.log(xmlHttpReq.responseText);
+          
         }
         catch(anyException) {
           console.log("Exception happened: ");
@@ -238,8 +207,11 @@
   <body>
     <table>
       <tr>
-        <td onclick="playSong()"><img id="PlaySong" alt="Play" src="Play.PNG"></td>
-        <td onclick="pauseSong()"><img id="PauseSong" alt="Pause" src="Pause.PNG"></td>
+        <td onclick="trackPrevious()"><img id="TrackPrevious" alt="Previous" src="./Icons/Play_PreviousInActive.png"></td>
+        <td onclick="trackPlay()"><img id="TrackPlay" alt="Play" src="./Icons/Play_PlayInActive.png"></td>
+        <td onclick="trackStop()"><img id="TrackStop" alt="Play" src="./Icons/Play_StopInActive.png"></td>
+        <td onclick="trackPause()"><img id="TrackPause" alt="Pause" src="./Icons/Play_PauseInActive.png"></td>
+        <td onclick="trackNext()"><img id="TrackNext" alt="Next" src="./Icons/Play_NextInActive.png"></td>
       </tr>
     </table>
     <br>
@@ -261,7 +233,7 @@
         <td onclick="change_player('tidal')">Tidal</td>
       </tr>
     </table>
-    <iframe id="apiResult" src="./BurmiEmpty.html" title="API Result"></iframe>
+    <iframe id="apiResult" src="./BurmiEmpty.html" title="API Result" style="position: absolute; width:0; height:0; border:0;"></iframe>
     <br>
     <br>
     <br>
