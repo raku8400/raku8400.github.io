@@ -4,7 +4,7 @@
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>Burmi V1.012</title>
       <style>
-      body { background-color: #004242 }
+        body { background-color: #004242 }
       </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha512-E8QSvWZ0eCLGk4km3hxSsNmGWbLtSCSUcewDQPQWZF6pEU8GlT8a5fF32wOl1i8ftdMhssTrF/OhyGWwonTcXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
@@ -22,13 +22,13 @@
       var IP = "192.168.1.106";
       //
       // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
-      var IS_SONG_PLAYING = false;
+      var IS_TRACK_PLAYING = false;
       //
       window.onload = initPlayer;
       //
       //TODO Document
       function initPlayer() {
-        //isSongPlayed();
+        isSongPlayed();
         return;
       }
       //
@@ -48,11 +48,10 @@
         return url
       }
       //
-      // TODO Document
       function waitForMs(ms) {
         var start = new Date().getTime();
         var end = start;
-        while(end < start + ms) {
+       while(end < start + ms) {
           end = new Date().getTime();
         }
       }
@@ -70,38 +69,38 @@
       }
       //
       // Starts or resumes playing of the currently active song
-      function playSong() {
+      function playTrack() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Play"}}}'
-        executeGetRequestPost(cmd);
-        IS_SONG_PLAYING = true;
-        //updateAllIcons();
+        executeGetRequest(cmd);
+        IS_TRACK_PLAYING = true;
+        updateAllIcons();
         //window.location.replace("Burmi.html");
       }
       //
       // Pauses playing of the currently active song
-      function pauseSong() {
+      function pauseTrack() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Pause"}}}'
-        executeGetRequestPost(cmd);
-        IS_SONG_PLAYING = false;
-        //updateAllIcons();
+        executeGetRequest(cmd);
+        IS_TRACK_PLAYING = false;
+        updateAllIcons();
         //window.location.replace("Burmi.html");
       }
       //
-      // Moves to the next played song
-      function moveNext() {
+      // Moves to the next played track
+      function moveNextTrack() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "SkipForward"}}}'
-        executeGetRequestPost(cmd);
-        IS_SONG_PLAYING = false;
-        //updateAllIcons();
+        executeGetRequest(cmd);
+        IS_TRACK_PLAYING = false;
+        updateAllIcons();
         //window.location.replace("Burmi.html");
       }
       //
-      // Moves to the next played song
-      function movePrevious() {
+      // Moves to the previous played track
+      function movePreviousTrack() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "BackForward"}}}'
-        executeGetRequestPost(cmd);
-        IS_SONG_PLAYING = false;
-        //updateAllIcons();
+        executeGetRequest(cmd);
+        IS_TRACK_PLAYING = false;
+        updateAllIcons();
         //window.location.replace("Burmi.html");
       }
 
@@ -109,8 +108,8 @@
       //
       // Updates all icons
       function updateAllIcons() {
-        document.getElementById("PlaySong").src = IS_SONG_PLAYING ? "PlayDisabled.PNG" : "Play.PNG";
-        document.getElementById("PauseSong").src = IS_SONG_PLAYING ? "Pause.PNG" : "PauseDisabled.PNG";
+        document.getElementById("PlayTrack").src = IS_TRACK_PLAYING ? "PlayDisabled.png" : "Play.png";
+        document.getElementById("PauseTrack").src = IS_TRACK_PLAYING ? "Pause.png" : "PauseDisabled.png";
       }
       //
       // TODO ab hier funktioniert es noch nicht
@@ -142,7 +141,8 @@
       //
       // TODO Document
       // Source: https://stackoverflow.com/questions/36975619/how-to-call-a-rest-web-service-api-from-javascript
-      function executeGetRequestPost(cmd) {
+      
+      function executeGetRequestold(cmd) {
         encodedCmd = getEncodedURL(cmd);
         authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012";
         let authStringHash = CryptoJS.SHA1(authString);
@@ -151,23 +151,43 @@
         // Suffix of URL (part directly before the param)
         var URL_SUF = "_[MC_JSON]_";
         url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
-        /*
+
         var xhttp = new XMLHttpRequest();
+        /*
         xhttp.onreadystatechange = function() {
              if (this.readyState == 4 && this.status == 200) {
                  alert(this.responseText);
+                 console.log(this.responseText);
+ 
              }
         };
         */
+
+        fetch(url)
+          .then(
+            response => response.text() // .json(), .blob(), etc.
+          ).then(
+            text => console.log("Resultat: " + text) // Handle here
+          );
+
         console.log("url POST");
         console.log(url);
         /*
-        xhttp.open("POST", url, true);
+        xhttp.open("GET", url, true);
         xhttp.setRequestHeader("Content-type", "application/json");
-        //xhttp.send("");
+        xhttp.send("");
         */
-        fetch(url, {method: "POST"})
+        //var resp = xhttp.response;
+        //console.log("Response");
+        //console.log(resp);
+ 
+
+        //const myHeaders = new Headers();
+        //myHeaders.append("Content-type", "application/json");
+        //myHeaders.append("Access-Control-Allow-Origin", true);
+        //fetch(url, {method: "GET",  headers: myHeaders})
       }
+      
 
       
       function executeGetRequest(cmd) {
@@ -180,28 +200,32 @@
         var URL_SUF = "_[MC_JSON]_";
         url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
         //window.location.href = url;
-        apiResultElement = apiResult
+        //apiResultElement = apiResult
         //popupWindow = window.open(url,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
         console.log("url");
         console.log(url);
         // https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
         const frame = document.getElementById("apiResult");
-        var anyVariableObject = "apiBurmiCall";
-        frame.contentWindow.postMessage(anyVariableObject, "*");
+        //var anyVariableObject = "apiBurmiCall";
+        //frame.contentWindow.postMessage(anyVariableObject, "*");
 
         // Execute API call and divert the result to the IFRAME
-        // TODO Ralf auskommentiert 02.11.2024 wg Mixed Content (Http/https Problematik
-        //frame.src = url;
+        var a = url;
+        frame.src = url;
+        console.log("apiResult: " + a);
+        
         // TODO Better wait?
         //waitForMs(2000); 
         // TODO Read content of window for future use
         //var apiResult = document.getElementById('apiResult').contentWindow.document.body.innerHTML;
-        //apiResult = popupWindow.outerText;
-        //console.log("apiResult");
+        /*
+        apiResult = popupWindow.outerText;
+        console.log("apiResult: " + apiResult);
         //console.log(popupWindow.outerText);
+        */
         //popupWindow.close();
         /*
-        Because of CORS and the like we need to do a pseudo navigate (hidden would be better)
+        //Because of CORS and the like we need to do a pseudo navigate (hidden would be better)
         let xmlHttpReq = new XMLHttpRequest();
         // Unfortunately Burmi API does not support CORS. In order to not flood the console, let's just swallow every error
         try {
@@ -221,6 +245,7 @@
           console.log(xmlHttpReq.readyState);
           console.log(xmlHttpReq.status);
           console.log(xmlHttpReq.responseText);
+          
         }
         catch(anyException) {
           console.log("Exception happened: ");
@@ -232,6 +257,7 @@
         finally {
         }
         */
+        
       }
       function change_player(player) {
         console.log(player)
@@ -256,10 +282,10 @@
   <body>
     <table>
       <tr>
-        <td onclick="movePrevious()"><img id="PlayPrevious" alt="Play" src="Previous.png"></td>
-        <td onclick="playSong()"><img id="PlaySong" alt="Play" src="Play.png"></td>
-        <td onclick="pauseSong()"><img id="PauseSong" alt="Pause" src="Pause.png"></td>
-        <td onclick="moveNext()"><img id="PlayNext" alt="Play" src="Next.png"></td>
+        <td onclick="movePreviousTrack()"><img id="PlayPreviousTrack" alt="Previous" src="Previous.png"></td>
+        <td onclick="playTrack()"><img id="PlayTrack" alt="Play" src="Play.png"></td>
+        <td onclick="pauseTrack()"><img id="PauseTrack" alt="Pause" src="Pause.png"></td>
+        <td onclick="moveNextTrack()"><img id="PlayNextTrack" alt="Next" src="Forward.png"></td>
       </tr>
     </table>
     <br>
