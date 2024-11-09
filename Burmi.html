@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.015</title>
+    <title>Burmi V1.016</title>
       <style>
         body { background-color: #004242 }
       </style>
@@ -33,7 +33,7 @@
       var IS_MODE_REPEAT = false;
       //
       // Indicates the currently active player - TODO do not hardcode - currently needs to be initialized to CD outside of page
-      var PLAYER = "CD"; // "TIDAL", "RADIO", ""
+      //var PLAYER = "CD"; // "TIDAL", "RADIO", ""
       //
       window.onload = initPlayer;
       //
@@ -67,17 +67,18 @@
           IS_TRACK_PLAYING = true;
         else if (returnText.includes('"PlayState":"Pause"'))
           IS_TRACK_PLAYING = false;
-        if (returnText.includes('"Repeat":"true"'))
+        if (returnText.includes('"Repeat":true'))
           IS_MODE_REPEAT = true;
-        else if (returnText.includes('"Repeat":"false"'))
+        else if (returnText.includes('"Repeat":false'))
           IS_MODE_REPEAT = false;
-        if (returnText.includes('"Shuffle":"true"'))
+        if (returnText.includes('"Shuffle":true'))
           IS_MODE_SHUFFLE = true;
-        else if (returnText.includes('"Shuffle":"false"'))
+        else if (returnText.includes('"Shuffle":false'))
         IS_MODE_SHUFFLE = false;
         updateAllIcons();
         return;
       }
+      /*
       // Returns the name for the given player to be used in Burmi API calls
       function getBurmiAPIName() {
         if (PLAYER === "CD")
@@ -89,6 +90,7 @@
         else
           return "";
       }
+      */
       //
       // Retrieves whether or no the currently active track is being played
       function retrieveTrackPlayState() {
@@ -138,8 +140,9 @@
       //
       // Toggles the repeat mode
       function toggleRepeat()  {
-        cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetRepeat", "Parameters" :  "xxxx"}}}'
-        cmd.replace("xxxx", getBurmiAPIName());
+        cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetRepeat", "Parameters" :  xxxx}}}'
+        cmd = cmd.replace("xxxx", IS_MODE_REPEAT ? false : true);
+        console.log("R: " + cmd);
         executeGetRequest(cmd);
         IS_MODE_REPEAT = !IS_MODE_REPEAT;
         retrieveTrackPlayState();
@@ -148,8 +151,9 @@
       //
       // Toggles the shuffle mode
       function toggleShuffle() {
-        cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetShuffle", "Parameters" :  "xxxx"}}}'
-        cmd.replace("xxxx", getBurmiAPIName());
+        cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetShuffle", "Parameters" :  xxxx}}}'
+        cmd = cmd.replace("xxxx", IS_MODE_SHUFFLE ? false : true);
+        console.log("S: " + cmd);
         executeGetRequest(cmd);
         IS_MODE_SHUFFLE = !IS_MODE_SHUFFLE;
         retrieveTrackPlayState();
@@ -323,7 +327,7 @@
     <br>
     <br>
     <br>
-    <small>© Copyright Diana und Ralf Kulik 2022 - 2024. Use at your own risk - runs currently only on a browser instance for which CORS and other web security is turned off
+    <small align="center">© Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk<BR>Runs currently only on a browser instance for which CORS and other web security are turned off!<BR>Never use the same browser instance for other work, unless you know what you're doing!
     </small>
   </body>
 </html>
