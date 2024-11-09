@@ -26,11 +26,21 @@
       // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
       var IS_TRACK_PLAYING = false;
       //
+      // True if player is currently in shuffle mode
+      var IS_MODE_SHUFFLE = false;
+      //
+      // True if player is currently in shuffle mode
+      var IS_MODE_REPEAT = false;
+      //
+      // Indicates the currently active player - TODO do not hardcode - currently needs to be initialized to CD outside of page
+      var PLAYER = "CD"; // "TIDAL", "RADIO", ""
+      //
       window.onload = initPlayer;
       //
       //TODO Document
       function initPlayer() {
-        isSongPlayed();
+        retrieveTrackPlayState();
+        updateAllIcons();
         return;
       }
       //
@@ -49,25 +59,41 @@
         }
         return url
       }
-
-      // TODO Document: Wird zur Laufzeit vom Request aufgerufen und enthält die HTTP Responces
+      // TODO Document: Wird zur Laufzeit vom Request aufgerufen und enthält die HTTP Responses
+      // Damit werden die Status-Flags gefüllt und das re-draw der Icons ausgelöst
       function dummyCallback(returnText) {
         console.log("In dummy: " + returnText);
-        if (returnText.includes('"PlayState":"Play"')) {
+        if (returnText.includes('"PlayState":"Play"'))
           IS_TRACK_PLAYING = true;
-          console.log("in Dummy Callback: PLAYING TRUE" + returnText);
-        } else if (returnText.includes('"PlayState":"Pause"')) {
+        else if (returnText.includes('"PlayState":"Pause"'))
           IS_TRACK_PLAYING = false;
-          console.log("in Dummy Callback: PLAYING FALSE" + returnText);
-        };
+        if (returnText.includes('"Repeat":"true"'))
+          IS_MODE_REPEAT = true;
+        else if (returnText.includes('"Repeat":"false"'))
+          IS_MODE_REPEAT = false;
+        if (returnText.includes('"Shuffle":"true"'))
+          IS_MODE_SHUFFLE = true;
+        else if (returnText.includes('"Shuffle":"false"'))
+        IS_MODE_SHUFFLE = false;
         updateAllIcons();
         return;
       }
+      // Returns the name for the given player to be used in Burmi API calls
+      function getBurmiAPIName() {
+        if (PLAYER === "CD")
+          return "Linionik Pipe Player";
+        else if (PLAYER === "RADIO")
+          return "Radio";
+        else if (PLAYER === "TIDAL")
+          return "WiMP Player"
+        else
+          return "";
+      }
       //
-      // Retrieves whether or no the currently active song is being played
-      function isSongPlayed() {
+      // Retrieves whether or no the currently active track is being played
+      function retrieveTrackPlayState() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioGetInfo" : {"Method" : "GetPlayState"}}}'
-        var a = executeGetRequest(cmd);
+        executeGetRequest(cmd);
       }
       //
       // Starts or pauses playing of a currently active track
@@ -79,7 +105,7 @@
           cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Play"}}}'
         executeGetRequest(cmd);
         IS_TRACK_PLAYING = !IS_TRACK_PLAYING;
-        isSongPlayed();
+        retrieveTrackPlayState();
         updateAllIcons();
       }
       //
@@ -88,7 +114,7 @@
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Stop"}}}'
         executeGetRequest(cmd);
         IS_TRACK_PLAYING = false;
-        isSongPlayed();
+        retrieveTrackPlayState();
         updateAllIcons();
       }
       //
@@ -97,7 +123,7 @@
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "SkipForward"}}}'
         executeGetRequest(cmd);
         IS_TRACK_PLAYING = true;
-        isSongPlayed();
+        retrieveTrackPlayState();
         updateAllIcons();
       }
       //
@@ -106,19 +132,38 @@
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "BackForward"}}}'
         executeGetRequest(cmd);
         IS_TRACK_PLAYING = true;
-        isSongPlayed();
+        retrieveTrackPlayState();
         updateAllIcons();
       }
-
-
+      //
+      // Toggles the repeat mode
+      function toggleRepeat()  {
+        cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetRepeat", "Parameters" :  "xxxx"}}}'
+        cmd.replace("xxxx", getBurmiAPIName());
+        executeGetRequest(cmd);
+        IS_MODE_REPEAT = !IS_MODE_REPEAT;
+        retrieveTrackPlayState();
+        updateAllIcons();
+      }
+      //
+      // Toggles the shuffle mode
+      function toggleShuffle() {
+        cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetShuffle", "Parameters" :  "xxxx"}}}'
+        cmd.replace("xxxx", getBurmiAPIName());
+        executeGetRequest(cmd);
+        IS_MODE_SHUFFLE = !IS_MODE_SHUFFLE;
+        retrieveTrackPlayState();
+        updateAllIcons();
+      }
       //
       // Updates all icons according to the current state of Burmi
       function updateAllIcons() {
         document.getElementById("TrackPlayOrPause").src = IS_TRACK_PLAYING ? "./Icons/Play_PauseActive.png" : "./Icons/Play_PlayActive.png";
         document.getElementById("TrackStop").src = "./Icons/Play_StopActive.png";
-        //document.getElementById("TrackPause").src = IS_TRACK_PLAYING ? "./Icons/Play_PauseActive.png" : "./Icons/Play_PauseInActive.png";
         document.getElementById("TrackPrevious").src = "./Icons/Play_PreviousActive.png";
         document.getElementById("TrackNext").src = "./Icons/Play_NextActive.png";
+        document.getElementById("PlayModeShuffle").src = IS_MODE_SHUFFLE ? "./Icons/ShuffleActive.png" : "./Icons/ShuffleInActive.png";
+        document.getElementById("PlayModeRepeat").src = IS_MODE_REPEAT ? "./Icons/RepeatActive.png" : "./Icons/RepeatInActive.png";
       }
       //
       // TODO ab hier funktioniert es noch nicht
@@ -214,6 +259,7 @@
         }
         
       }
+      /*
       function change_player(player) {
         console.log(player)
         switch (player) {
@@ -229,7 +275,7 @@
           default:
             //TODO Errorhandling is missing 
         }
-      }
+      }*/
     </script>
     <noscript>Ohne aktiviertes JavaScript läuft die Seite nicht.<BR>
     You need to enable JavaScript to make this page running.</noscript>
@@ -237,10 +283,14 @@
   <body>
     <table>
       <tr>
-        <td onclick="trackPrevious()"><img id="TrackPrevious" alt="Previous" src="./Icons/Play_PreviousInActive.png"></td>
-        <td onclick="trackPlayOrPause()"><img id="TrackPlayOrPause" alt="PlayOrPause" src="./Icons/Play_PlayInActive.png"></td>
-        <td onclick="trackStop()"><img id="TrackStop" alt="Play" src="./Icons/Play_StopInActive.png"></td>
-        <td onclick="trackNext()"><img id="TrackNext" alt="Next" src="./Icons/Play_NextInActive.png"></td>
+        <td align="center" onclick="trackPrevious()"><img id="TrackPrevious" alt="Previous" src="./Icons/Play_PreviousInActive.png"></td>
+        <td align="center" onclick="trackPlayOrPause()"><img id="TrackPlayOrPause" alt="PlayOrPause" src="./Icons/Play_PlayInActive.png"></td>
+        <td align="center" onclick="trackStop()"><img id="TrackStop" alt="Play" src="./Icons/Play_StopInActive.png"></td>
+        <td align="center" onclick="trackNext()"><img id="TrackNext" alt="Next" src="./Icons/Play_NextInActive.png"></td>
+      </tr>
+      <tr>
+        <td align="center" colspan="2" onclick="toggleRepeat()"><img id="PlayModeRepeat" alt="Repeat" src="./Icons/RepeatInActive.png"></td>
+        <td align="center" colspan="2" onclick="toggleShuffle()"><img id="PlayModeShuffle" alt="Shuffle" src="./Icons/ShuffleInActive.png"></td>
       </tr>
     </table>
     <br>
