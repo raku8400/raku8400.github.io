@@ -2,18 +2,25 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.017</title>
+    <title>Burmi V1.020</title>
       <style>
         body { background-color: #004242 }
       </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha512-E8QSvWZ0eCLGk4km3hxSsNmGWbLtSCSUcewDQPQWZF6pEU8GlT8a5fF32wOl1i8ftdMhssTrF/OhyGWwonTcXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
+      // Note
+      // Runs currently only on a browser instance for which CORS and other web security is turned off
+      // For Safari: Einstellungen/Entickler/Ursprungsübergreifende Beschränkunken deaktivieren (Default=unchecked, Unsicher = Checked)
+      // For Chrome: Siehe https://stackoverflow.com/questions/74374213/how-to-disable-cross-origin-restriction-in-chrome
+      //             "C:\Program Files\Google\Chrome\Application\chrome.exe" --disable-web-security --disable-gpu --user-data-dir=C:\Users\Public\Documents
+      // For Firefox: Unklar
       // TODO Switch Player fehlt noch
       // TODO Tidal Webpage ist noch cool
       // TODO Initialisierung zu Beginn fehlt noch (is_running, player etc). Oder funktioniert glaubs noch nicht immer ganz richtig
       // TODO FavIcon fehlt noch bzgl. Gestaltung
-      // TODO: Wenn man den Player mitten während des Anzeigens der Webseite ausschaltet, kriegt man das hier nicht mit
-      // Die Warnungen der Browser-Konsole muessen noch raus
+      // TODO Wenn man den Player mitten während des Anzeigens der Webseite ausschaltet, kriegt man das hier nicht mit
+      // TODO Die Page müsste sich alle paar Sekunden selbst initialisieren (z.B. wenn ein Titel wechselt, oder jemand anders via App/Gerät ändert)
+      // TODO Die Warnungen der Browser-Konsole muessen noch raus
       //
       // Lower Prio:
       // TODO Letzter Part der IP (z.Zt. 106, war aber auch schon 115) sollte noch dynamisch ermittelt werden
@@ -26,6 +33,8 @@
       var PLAYED_TRACK_TITLE = '';   // Title of the currently played track
       var PLAYED_TRACK_ARTIST = '';  // Name of the artist of the currently played track
       var PLAYED_TRACK_ALBUM = '';   // Name of the albom in which the currently played track appears
+      var TIMEOUT_SHORT = 100;       // Short Timeout (e.g. for Ping) in milliseconds
+      var TIMEOUT_LONG = 750;        // Normal Timeout (e.g. for PlayNext) in milliseconds
       //
       // Indicates the currently active player - TODO do not hardcode - currently needs to be initialized to CD outside of page
       //var PLAYER = "CD"; // "TIDAL", "RADIO", ""
@@ -35,9 +44,9 @@
       //TODO Document
       async function initPlayer() {
         executePing();
-        await sleep(100); // Force the ping almost synchronously
+        await sleep(TIMEOUT_SHORT);  // Force the ping almost synchronously
         retrieveTrackPlayState();
-        //updateAllIcons();
+        retrieveTrackInfo();
         return;
       }
       //
@@ -147,7 +156,7 @@
         executeGetRequest(cmd);
         retrieveTrackPlayState();
         // TODO Gibt es eine bessere Lösung (wir müssen warten, bis Burmi das PlayNext/Previous ausgeführt hat)
-        await sleep(500);
+        await sleep(TIMEOUT_LONG);
         retrieveTrackInfo();
       }
       //
@@ -157,7 +166,7 @@
         executeGetRequest(cmd);
         retrieveTrackPlayState();
         // TODO Gibt es eine bessere Lösung (wir müssen warten, bis Burmi das PlayNext/Previous ausgeführt hat)
-        await sleep(500);
+        await sleep(TIMEOUT_LONG);
         retrieveTrackInfo();
       }
       //
@@ -229,7 +238,7 @@
             IS_BURMI_ON = true;}
         };
         xmlHttpReq.open("GET", url, true);
-        xmlHttpReq.timeout = 100; // Set timeout to 100 milliseconds
+        xmlHttpReq.timeout = TIMEOUT_SHORT; // milliseconds
         xmlHttpReq.ontimeout = function () { console.log("Timeout during Ping"); IS_BURMI_ON = false; return;}
         xmlHttpReq.send(null);
       }
@@ -315,13 +324,13 @@
         <td align="center" colspan="6" onclick="toggleShuffle()"><img id="PlayModeShuffle" alt="Shuffle" src="./Icons/ShuffleInActive.png"></td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="trackTitle"></div></td>
+        <td align="center" colspan="12" ><div id="trackTitle" style="color:#aaa3a3"></div></td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="albumTitle"></div></td>
+        <td align="center" colspan="12" ><div id="albumTitle" style="color:#aaa3a3"></div></td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="artistName"></div></td>
+        <td align="center" colspan="12" ><div id="artistName" style="color:#aaa3a3"></div></td>
       </tr>
       <tr>
         <td align="center" colspan="4" onclick="changePlayer('local')">CD (ToDo)</td>
@@ -354,7 +363,7 @@
     <br>
     <br>
     <p align="center"><small>
-      © Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk!
+      © Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk<BR>Runs currently only on a browser instance for which CORS and other web security are turned off!<BR>Never use the same browser instance for other work, unless you know what you're doing!
     </small>
   </body>
 </html>
