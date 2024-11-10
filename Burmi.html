@@ -25,16 +25,17 @@
       // Lower Prio:
       // TODO Letzter Part der IP (z.Zt. 106, war aber auch schon 115) sollte noch dynamisch ermittelt werden
       //
-      var IP = "192.168.1.106";      // IP adress in local network under which Burmi MC can be reached - look it up in the app
-      var IS_BURMI_ON = false;       // True if Burmi is online, otherwise False
-      var IS_TRACK_PLAYING = false;  // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
-      var IS_MODE_SHUFFLE = false;   // True if player is currently in shuffle mode
-      var IS_MODE_REPEAT = false;    // True if player is currently in repeate mode
-      var PLAYED_TRACK_TITLE = '';   // Title of the currently played track
-      var PLAYED_TRACK_ARTIST = '';  // Name of the artist of the currently played track
-      var PLAYED_TRACK_ALBUM = '';   // Name of the albom in which the currently played track appears
-      var TIMEOUT_SHORT = 100;       // Short Timeout (e.g. for Ping) in milliseconds
-      var TIMEOUT_LONG = 750;        // Normal Timeout (e.g. for PlayNext) in milliseconds
+      var IP = "192.168.1.106";         // IP adress in local network under which Burmi MC can be reached - look it up in the app
+      var IS_BURMI_ON = false;          // True if Burmi is online, otherwise False
+      var IS_TRACK_PLAYING = false;     // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
+      var IS_MODE_SHUFFLE = false;      // True if player is currently in shuffle mode
+      var IS_MODE_REPEAT = false;       // True if player is currently in repeate mode
+      var PLAYED_TRACK_TITLE = '';      // Title of the currently played track
+      var PLAYED_TRACK_ARTIST = '';     // Name of the artist of the currently played track
+      var PLAYED_TRACK_ALBUM = '';      // Name of the albom in which the currently played track appears
+      var PLAYED_TRACK_IMAGE_URL = '';  // URL to retrieve image of the currently played track
+      var TIMEOUT_SHORT = 100;          // Short Timeout (e.g. for Ping) in milliseconds
+      var TIMEOUT_LONG = 750;           // Normal Timeout (e.g. for PlayNext) in milliseconds
       //
       // Indicates the currently active player - TODO do not hardcode - currently needs to be initialized to CD outside of page
       //var PLAYER = "CD"; // "TIDAL", "RADIO", ""
@@ -90,11 +91,11 @@
           IS_MODE_SHUFFLE = false;
         if (responseText.includes('"SongInfo"')) {
           var songInfo = JSON.parse(responseText);
-          // TODO braucht vermutlich noch Fallunterscheidung für verschiedene Player (Radio hat kein Album)
-          //console.log("songInfo: " + songInfo.SongInfo);
+          // TODO braucht vermutlich noch Fallunterscheidung für verschiedene Player (Radio hat kein Album und bei Tidal heisst das Zeugs anders)
           PLAYED_TRACK_TITLE = songInfo.SongInfo.Title;
           PLAYED_TRACK_ARTIST = songInfo.SongInfo.Artist;
           PLAYED_TRACK_ALBUM = songInfo.SongInfo.Album;
+          PLAYED_TRACK_IMAGE_URL = songInfo.SongDictionary.Cover;
         }
         updateAllIcons();
         return;
@@ -200,6 +201,7 @@
         document.getElementById('trackTitle').textContent = PLAYED_TRACK_TITLE;
         document.getElementById('albumTitle').textContent = PLAYED_TRACK_ALBUM;
         document.getElementById('artistName').textContent = PLAYED_TRACK_ARTIST;
+        document.getElementById('trackImage').src = PLAYED_TRACK_IMAGE_URL;
       }
       //
       // TODO ab hier funktioniert es noch nicht
@@ -272,12 +274,7 @@
             }
           };
           xmlHttpReq.open("GET", url, false); // true for asynchronous, false for synchronous
-          xmlHttpReq.send(null);
-          //console.log("Status Statustext:" + xmlHttpReq.statusText);
-          //console.log("Status ReadyState:" + xmlHttpReq.readyState);
-          //console.log("Status Status:" + xmlHttpReq.status);
-          //console.log("Status Response:" + xmlHttpReq.responseText);
-          
+          xmlHttpReq.send(null);          
         }
         catch(anyException) {
           console.log("Exception happened: " + anyException);
@@ -324,13 +321,14 @@
         <td align="center" colspan="6" onclick="toggleShuffle()"><img id="PlayModeShuffle" alt="Shuffle" src="./Icons/ShuffleInActive.png"></td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="trackTitle" style="color:#aaa3a3"></div></td>
+        <td align="center" colspan="6" style="width: 50%;"><div id="trackTitle" style="color:#aaa3a3"></div></td>
+        <td align="center" colspan="6" rowspan="3" style="width: 50%;"> <img id="trackImage" src="" alt="Track Image" width="320" height="320"> </td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="albumTitle" style="color:#aaa3a3"></div></td>
+        <td align="center" colspan="6" ><div id="albumTitle" style="color:#aaa3a3"></div></td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="artistName" style="color:#aaa3a3"></div></td>
+        <td align="center" colspan="6" ><div id="artistName" style="color:#aaa3a3"></div></td>
       </tr>
       <tr>
         <td align="center" colspan="4" onclick="changePlayer('local')">CD (ToDo)</td>
