@@ -19,22 +19,13 @@
       // Die Warnungen der Browser-Konsole muessen noch raus
       //
       // Lower Prio:
-      // TODO Letzter Part der IP (z.Zt. 106, war auch schon 115) sollte noch dynamisch ermittelt werden
+      // TODO Letzter Part der IP (z.Zt. 106, war aber auch schon 115) sollte noch dynamisch ermittelt werden
       //
-      // IP adress in local network under which Burmi MC can be reached - look it up in the app
-      var IP = "192.168.1.106";
-      //
-      // True if Burmi is online, otherwise False
-      var IS_BURMI_ON = false;
-      //
-      // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
-      var IS_TRACK_PLAYING = false;
-      //
-      // True if player is currently in shuffle mode
-      var IS_MODE_SHUFFLE = false;
-      //
-      // True if player is currently in shuffle mode
-      var IS_MODE_REPEAT = false;
+      var IP = "192.168.1.106";      // IP adress in local network under which Burmi MC can be reached - look it up in the app
+      var IS_BURMI_ON = false;       // True if Burmi is online, otherwise False
+      var IS_TRACK_PLAYING = false;  // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
+      var IS_MODE_SHUFFLE = false;   // True if player is currently in shuffle mode
+      var IS_MODE_REPEAT = false;    // True if player is currently in repeate mode
       //
       // Indicates the currently active player - TODO do not hardcode - currently needs to be initialized to CD outside of page
       //var PLAYER = "CD"; // "TIDAL", "RADIO", ""
@@ -42,11 +33,18 @@
       window.onload = initPlayer;
       //
       //TODO Document
-      function initPlayer() {
+      async function initPlayer() {
         executePing();
+        await sleep(100); // Force the ping almost synchronously
         retrieveTrackPlayState();
-        updateAllIcons();
+        //updateAllIcons();
         return;
+      }
+      //
+      // Sleeps for the given time in milliseconds
+      // Source: https://www.heise.de/tipps-tricks/JavaScript-Sleep-und-setTimeout-4060840.html
+      function sleep (time) {
+        return new Promise((resolve) => setTimeout(resolve, time));
       }
       //
       // Encodes the given URL and returns the result
@@ -66,19 +64,20 @@
       }
       // TODO Document: Wird zur Laufzeit vom Request aufgerufen und enthält die HTTP Responses
       // Damit werden die Status-Flags gefüllt und das re-draw der Icons ausgelöst
-      function dummyCallback(returnText) {
-        console.log("In dummy: " + returnText);
-        if (returnText.includes('"PlayState":"Play"'))
+      // TODO Anstatt mit String.Contains Funktionen könnte man das JSON sauber parsen
+      function apiCallbackResponse(responseText) {
+        console.log("In apiCallbackResponse: " + responseText);
+        if (responseText.includes('"PlayState":"Play"'))
           IS_TRACK_PLAYING = true;
-        else if (returnText.includes('"PlayState":"Pause"'))
+        else if (responseText.includes('"PlayState":"Pause"'))
           IS_TRACK_PLAYING = false;
-        if (returnText.includes('"Repeat":true'))
+        if (responseText.includes('"Repeat":true'))
           IS_MODE_REPEAT = true;
-        else if (returnText.includes('"Repeat":false'))
+        else if (responseText.includes('"Repeat":false'))
           IS_MODE_REPEAT = false;
-        if (returnText.includes('"Shuffle":true'))
+        if (responseText.includes('"Shuffle":true'))
           IS_MODE_SHUFFLE = true;
-        else if (returnText.includes('"Shuffle":false'))
+        else if (responseText.includes('"Shuffle":false'))
         IS_MODE_SHUFFLE = false;
         updateAllIcons();
         return;
@@ -102,6 +101,16 @@
         if (IS_BURMI_ON) {
           cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioGetInfo" : {"Method" : "GetPlayState"}}}'
           executeGetRequest(cmd);
+          retrieveTrackInfo();
+          updateAllIcons();
+        }
+      }
+      //
+      // Retrieves information about the currently active track
+      function retrieveTrackInfo() {
+        if (IS_BURMI_ON) {
+          cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioGetInfo" : {"Method" : "GetCurrentSongInfo"}}}'
+          executeGetRequest(cmd);
         }
       }
       //
@@ -115,59 +124,58 @@
         executeGetRequest(cmd);
         // TODO Eigentlich könnten die nachfolgenden Zuweisung alle in den Detailmethoden entfallen? Oder?
         // Und updateAllIcons könnte von der retrieveTrackPlayState aus aufgerufen werden
-        IS_TRACK_PLAYING = !IS_TRACK_PLAYING;
+        //IS_TRACK_PLAYING = !IS_TRACK_PLAYING;
         retrieveTrackPlayState();
-        updateAllIcons();
+        //updateAllIcons();
       }
       //
       // Stops playing any track
       function trackStop() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Stop"}}}'
         executeGetRequest(cmd);
-        IS_TRACK_PLAYING = false;
+        //IS_TRACK_PLAYING = false;
         retrieveTrackPlayState();
-        updateAllIcons();
+        //updateAllIcons();
       }
       //
       // Moves to the next played track
       function trackNext() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "SkipForward"}}}'
         executeGetRequest(cmd);
-        IS_TRACK_PLAYING = true;
+        //IS_TRACK_PLAYING = true;
         retrieveTrackPlayState();
-        updateAllIcons();
+        //updateAllIcons();
       }
       //
       // Moves to the previous played track
       function trackPrevious() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "BackForward"}}}'
         executeGetRequest(cmd);
-        IS_TRACK_PLAYING = true;
+        //IS_TRACK_PLAYING = true;
         retrieveTrackPlayState();
-        updateAllIcons();
+        //updateAllIcons();
       }
       //
       // Toggles the repeat mode
       function toggleRepeat()  {
         cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetRepeat", "Parameters" :  xxxx}}}'
         cmd = cmd.replace("xxxx", IS_MODE_REPEAT ? false : true);
-        console.log("R: " + cmd);
         executeGetRequest(cmd);
-        IS_MODE_REPEAT = !IS_MODE_REPEAT;
+        //IS_MODE_REPEAT = !IS_MODE_REPEAT;
         retrieveTrackPlayState();
-        updateAllIcons();
+        //updateAllIcons();
       }
       //
       // Toggles the shuffle mode
       function toggleShuffle() {
         cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetShuffle", "Parameters" :  xxxx}}}'
         cmd = cmd.replace("xxxx", IS_MODE_SHUFFLE ? false : true);
-        console.log("S: " + cmd);
         executeGetRequest(cmd);
-        IS_MODE_SHUFFLE = !IS_MODE_SHUFFLE;
+        //IS_MODE_SHUFFLE = !IS_MODE_SHUFFLE;
         retrieveTrackPlayState();
-        updateAllIcons();
+        //updateAllIcons();
       }
+      //
       //
       // Updates all icons according to the current state of Burmi
       function updateAllIcons() {
@@ -214,8 +222,8 @@
         url = "http://" + IP;
         xmlHttpReq = new XMLHttpRequest();
         xmlHttpReq.onreadystatechange = function () {
-          if (xmlHttpReq.readyState == 4)
-            IS_BURMI_ON = true;
+          if (xmlHttpReq.readyState == 4) {
+            IS_BURMI_ON = true;}
         };
         xmlHttpReq.open("GET", url, true);
         xmlHttpReq.timeout = 100; // Set timeout to 100 milliseconds
@@ -224,12 +232,11 @@
       }
       //
       // TODO Document
-      // Returns the body of the response as string
+      // Returns the body of the response as string, but only the the apiCallbackResponse method
       // Sources:
       // https://stackoverflow.com/questions/36975619/how-to-call-a-rest-web-service-api-from-javascript
       // https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
       function executeGetRequest(cmd) {
-        console.log("cmd: " + cmd);
         if (!IS_BURMI_ON)
           return;
         encodedCmd = getEncodedURL(cmd);
@@ -240,26 +247,6 @@
         // Suffix of URL (part directly before the param)
         var URL_SUF = "_[MC_JSON]_";
         url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
-        //console.log("API Request: " +url);
-        //const frame = document.getElementById("apiResult");
-        //const obj = document.getElementById("apiResult2");
-        //const embed = document.getElementById("apiResult3");
-        // Execute API call and divert the result to the IFRAME
-        //var resp = url;
-        // TODO gelegentlich noch rausfinden, warum es diese Zeile zwingend braucht
-        //frame.src = resp;
-        //obj.src = resp;
-        //embed.src = "<HTML><HEAD></HEAD><BODY><B>" + url + "</B></BODY></HTML>";
-        
-        //embed.src = url;
-        //console.log("API Result: " + resp);
-        //console.log("obj.src: " + obj.textContent);
-        //var emb2 = document.getElementById("apiResult3");
-        //console.log("emb1: " + emb2.innerHTML);
-        //console.log("emb2: " + emb2.outerText);
-        //console.log("emb3: " + emb2.getAttributeNames());
-        //return resp;
-        
         xmlHttpReq = new XMLHttpRequest();
         // Unfortunately Burmi API does not support CORS. In order to not flood the console, let's just swallow every error
         try {
@@ -269,7 +256,7 @@
               //console.log(xmlHttpReq.HEADERS_RECEIVED);
               //console.log(xmlHttpReq.status);
               //console.log(xmlHttpReq.statusText);
-              dummyCallback(xmlHttpReq.responseText);
+              apiCallbackResponse(xmlHttpReq.responseText);
             }
           };
           xmlHttpReq.open("GET", url, false); // true for asynchronous, false for synchronous
@@ -325,12 +312,22 @@
         <td align="center" colspan="6" onclick="toggleShuffle()"><img id="PlayModeShuffle" alt="Shuffle" src="./Icons/ShuffleInActive.png"></td>
       </tr>
       <tr>
-        <td align="center" colspan="4" onclick="xx()">CD (ToDo)</td>
-        <td align="center" colspan="4" onclick="xx()">Tidal (ToDo)</td>
-        <td align="center" colspan="4" onclick="xx()">Radio (ToDo)</td>
+        <td align="center" colspan="12" ><div id="trackTitle">Track</div></td>
+      </tr>
+      <tr>
+        <td align="center" colspan="12" ><div id="albumTitle">Album</div></td>
+      </tr>
+      <tr>
+        <td align="center" colspan="12" ><div id="artistName">Artist</div></td>
+      </tr>
+      <tr>
+        <td align="center" colspan="4" onclick="changePlayer('local')">CD (ToDo)</td>
+        <td align="center" colspan="4" onclick="changePlayer('radio')">Tidal (ToDo)</td>
+        <td align="center" colspan="4" onclick="changePlayer('tidal')">Radio (ToDo)</td>
       </tr>
     </table>
     <br>
+    <!--
     <table>
       <tr>
         <th>Player</th>
@@ -349,13 +346,6 @@
         <td onclick="change_player('tidal')">Tidal</td>
       </tr>
     </table>
-    <!-- 
-    <iframe id="apiResult" src="./BurmiEmpty.html" title="API Result"></iframe>
-    <object id="apiResult2" data="./BurmiEmpty.html" >
-      <embed src="./BurmiEmpty.html"> </embed>
-      Error: Embedded data could not be displayed.
-    </object>
-    <embed id="apiResult3" src="./BurmiEmpty.html" width=200 height=200 />
     -->
     <br>
     <br>
