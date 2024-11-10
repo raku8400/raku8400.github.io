@@ -8,9 +8,6 @@
       </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" integrity="sha512-E8QSvWZ0eCLGk4km3hxSsNmGWbLtSCSUcewDQPQWZF6pEU8GlT8a5fF32wOl1i8ftdMhssTrF/OhyGWwonTcXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
-      // Note
-      // Runs currently only on a browser instance for which CORS and other web security is turned off
-      // Start options for Chrome https://stackoverflow.com/questions/74374213/how-to-disable-cross-origin-restriction-in-chrome
       // TODO Switch Player fehlt noch
       // TODO Tidal Webpage ist noch cool
       // TODO Initialisierung zu Beginn fehlt noch (is_running, player etc). Oder funktioniert glaubs noch nicht immer ganz richtig
@@ -26,6 +23,9 @@
       var IS_TRACK_PLAYING = false;  // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
       var IS_MODE_SHUFFLE = false;   // True if player is currently in shuffle mode
       var IS_MODE_REPEAT = false;    // True if player is currently in repeate mode
+      var PLAYED_TRACK_TITLE = '';   // Title of the currently played track
+      var PLAYED_TRACK_ARTIST = '';  // Name of the artist of the currently played track
+      var PLAYED_TRACK_ALBUM = '';   // Name of the albom in which the currently played track appears
       //
       // Indicates the currently active player - TODO do not hardcode - currently needs to be initialized to CD outside of page
       //var PLAYER = "CD"; // "TIDAL", "RADIO", ""
@@ -78,7 +78,15 @@
         if (responseText.includes('"Shuffle":true'))
           IS_MODE_SHUFFLE = true;
         else if (responseText.includes('"Shuffle":false'))
-        IS_MODE_SHUFFLE = false;
+          IS_MODE_SHUFFLE = false;
+        if (responseText.includes('"SongInfo"')) {
+          var songInfo = JSON.parse(responseText);
+          // TODO braucht vermutlich noch Fallunterscheidung für verschiedene Player (Radio hat kein Album)
+          //console.log("songInfo: " + songInfo.SongInfo);
+          PLAYED_TRACK_TITLE = songInfo.SongInfo.Title;
+          PLAYED_TRACK_ARTIST = songInfo.SongInfo.Artist;
+          PLAYED_TRACK_ALBUM = songInfo.SongInfo.Album;
+        }
         updateAllIcons();
         return;
       }
@@ -111,6 +119,7 @@
         if (IS_BURMI_ON) {
           cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioGetInfo" : {"Method" : "GetCurrentSongInfo"}}}'
           executeGetRequest(cmd);
+          updateAllIcons();
         }
       }
       //
@@ -122,38 +131,34 @@
         else
           cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Play"}}}'
         executeGetRequest(cmd);
-        // TODO Eigentlich könnten die nachfolgenden Zuweisung alle in den Detailmethoden entfallen? Oder?
-        // Und updateAllIcons könnte von der retrieveTrackPlayState aus aufgerufen werden
-        //IS_TRACK_PLAYING = !IS_TRACK_PLAYING;
         retrieveTrackPlayState();
-        //updateAllIcons();
       }
       //
       // Stops playing any track
       function trackStop() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Stop"}}}'
         executeGetRequest(cmd);
-        //IS_TRACK_PLAYING = false;
         retrieveTrackPlayState();
-        //updateAllIcons();
       }
       //
       // Moves to the next played track
-      function trackNext() {
+      async function trackNext() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "SkipForward"}}}'
         executeGetRequest(cmd);
-        //IS_TRACK_PLAYING = true;
         retrieveTrackPlayState();
-        //updateAllIcons();
+        // TODO Gibt es eine bessere Lösung (wir müssen warten, bis Burmi das PlayNext/Previous ausgeführt hat)
+        await sleep(500);
+        retrieveTrackInfo();
       }
       //
       // Moves to the previous played track
-      function trackPrevious() {
+      async function trackPrevious() {
         cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "BackForward"}}}'
         executeGetRequest(cmd);
-        //IS_TRACK_PLAYING = true;
         retrieveTrackPlayState();
-        //updateAllIcons();
+        // TODO Gibt es eine bessere Lösung (wir müssen warten, bis Burmi das PlayNext/Previous ausgeführt hat)
+        await sleep(500);
+        retrieveTrackInfo();
       }
       //
       // Toggles the repeat mode
@@ -161,9 +166,7 @@
         cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetRepeat", "Parameters" :  xxxx}}}'
         cmd = cmd.replace("xxxx", IS_MODE_REPEAT ? false : true);
         executeGetRequest(cmd);
-        //IS_MODE_REPEAT = !IS_MODE_REPEAT;
         retrieveTrackPlayState();
-        //updateAllIcons();
       }
       //
       // Toggles the shuffle mode
@@ -171,11 +174,8 @@
         cmd = '{"Media_Obj" : "ActiveInput", "Method" : "ActiveInputCmd", "Parameters" : {"AudioControl" : {"Method" : "SetShuffle", "Parameters" :  xxxx}}}'
         cmd = cmd.replace("xxxx", IS_MODE_SHUFFLE ? false : true);
         executeGetRequest(cmd);
-        //IS_MODE_SHUFFLE = !IS_MODE_SHUFFLE;
         retrieveTrackPlayState();
-        //updateAllIcons();
       }
-      //
       //
       // Updates all icons according to the current state of Burmi
       function updateAllIcons() {
@@ -188,6 +188,9 @@
         document.getElementById("TrackNext").src = IS_BURMI_ON ? "./Icons/Play_NextActive.png" : "./Icons/Play_NextInActive.png" ;
         document.getElementById("PlayModeShuffle").src = IS_MODE_SHUFFLE ? "./Icons/ShuffleActive.png" : "./Icons/ShuffleInActive.png";
         document.getElementById("PlayModeRepeat").src = IS_MODE_REPEAT ? "./Icons/RepeatActive.png" : "./Icons/RepeatInActive.png";
+        document.getElementById('trackTitle').textContent = PLAYED_TRACK_TITLE;
+        document.getElementById('albumTitle').textContent = PLAYED_TRACK_ALBUM;
+        document.getElementById('artistName').textContent = PLAYED_TRACK_ARTIST;
       }
       //
       // TODO ab hier funktioniert es noch nicht
@@ -312,13 +315,13 @@
         <td align="center" colspan="6" onclick="toggleShuffle()"><img id="PlayModeShuffle" alt="Shuffle" src="./Icons/ShuffleInActive.png"></td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="trackTitle">Track</div></td>
+        <td align="center" colspan="12" ><div id="trackTitle"></div></td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="albumTitle">Album</div></td>
+        <td align="center" colspan="12" ><div id="albumTitle"></div></td>
       </tr>
       <tr>
-        <td align="center" colspan="12" ><div id="artistName">Artist</div></td>
+        <td align="center" colspan="12" ><div id="artistName"></div></td>
       </tr>
       <tr>
         <td align="center" colspan="4" onclick="changePlayer('local')">CD (ToDo)</td>
@@ -351,7 +354,7 @@
     <br>
     <br>
     <p align="center"><small>
-      © Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk<BR>Runs currently only on a browser instance for which CORS and other web security are turned off!<BR>Never use the same browser instance for other work, unless you know what you're doing!
+      © Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk!
     </small>
   </body>
 </html>
