@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <title>Burmi V1.016</title>
+    <title>Burmi V1.017</title>
       <style>
         body { background-color: #004242 }
       </style>
@@ -11,10 +11,11 @@
       // Note
       // Runs currently only on a browser instance for which CORS and other web security is turned off
       // Start options for Chrome https://stackoverflow.com/questions/74374213/how-to-disable-cross-origin-restriction-in-chrome
-      // TODO Playmode (Shuffle, Serial) fehlt noch
+      // TODO Switch Player fehlt noch
       // TODO Tidal Webpage ist noch cool
-      // TODO Initialisierung zu Beginn fehlt noch (is_running, player etc).
-      // TODO FavIcon fehlt noch
+      // TODO Initialisierung zu Beginn fehlt noch (is_running, player etc). Oder funktioniert glaubs noch nicht immer ganz richtig
+      // TODO FavIcon fehlt noch bzgl. Gestaltung
+      // TODO: Wenn man den Player mitten während des Anzeigens der Webseite ausschaltet, kriegt man das hier nicht mit
       // Die Warnungen der Browser-Konsole muessen noch raus
       //
       // Lower Prio:
@@ -22,6 +23,9 @@
       //
       // IP adress in local network under which Burmi MC can be reached - look it up in the app
       var IP = "192.168.1.106";
+      //
+      // True if Burmi is online, otherwise False
+      var IS_BURMI_ON = false;
       //
       // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
       var IS_TRACK_PLAYING = false;
@@ -39,6 +43,7 @@
       //
       //TODO Document
       function initPlayer() {
+        executePing();
         retrieveTrackPlayState();
         updateAllIcons();
         return;
@@ -94,8 +99,10 @@
       //
       // Retrieves whether or no the currently active track is being played
       function retrieveTrackPlayState() {
-        cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioGetInfo" : {"Method" : "GetPlayState"}}}'
-        executeGetRequest(cmd);
+        if (IS_BURMI_ON) {
+          cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioGetInfo" : {"Method" : "GetPlayState"}}}'
+          executeGetRequest(cmd);
+        }
       }
       //
       // Starts or pauses playing of a currently active track
@@ -106,6 +113,8 @@
         else
           cmd = '{"Media_Obj" : "ActiveInput","Method" : "ActiveInputCmd","Parameters" : {"AudioControl" : {"Method" : "Play"}}}'
         executeGetRequest(cmd);
+        // TODO Eigentlich könnten die nachfolgenden Zuweisung alle in den Detailmethoden entfallen? Oder?
+        // Und updateAllIcons könnte von der retrieveTrackPlayState aus aufgerufen werden
         IS_TRACK_PLAYING = !IS_TRACK_PLAYING;
         retrieveTrackPlayState();
         updateAllIcons();
@@ -162,10 +171,13 @@
       //
       // Updates all icons according to the current state of Burmi
       function updateAllIcons() {
-        document.getElementById("TrackPlayOrPause").src = IS_TRACK_PLAYING ? "./Icons/Play_PauseActive.png" : "./Icons/Play_PlayActive.png";
-        document.getElementById("TrackStop").src = "./Icons/Play_StopActive.png";
-        document.getElementById("TrackPrevious").src = "./Icons/Play_PreviousActive.png";
-        document.getElementById("TrackNext").src = "./Icons/Play_NextActive.png";
+        if (IS_BURMI_ON)
+          document.getElementById("TrackPlayOrPause").src = IS_TRACK_PLAYING ? "./Icons/Play_PauseActive.png" : "./Icons/Play_PlayActive.png";
+        else
+          document.getElementById("TrackPlayOrPause").src = "./Icons/Play_PlayInActive.png";
+        document.getElementById("TrackStop").src = IS_BURMI_ON ? "./Icons/Play_StopActive.png" : "./Icons/Play_StopInActive.png" ;
+        document.getElementById("TrackPrevious").src = IS_BURMI_ON ? "./Icons/Play_PreviousActive.png" : "./Icons/Play_PreviousInActive.png" ;
+        document.getElementById("TrackNext").src = IS_BURMI_ON ? "./Icons/Play_NextActive.png" : "./Icons/Play_NextInActive.png" ;
         document.getElementById("PlayModeShuffle").src = IS_MODE_SHUFFLE ? "./Icons/ShuffleActive.png" : "./Icons/ShuffleInActive.png";
         document.getElementById("PlayModeRepeat").src = IS_MODE_REPEAT ? "./Icons/RepeatActive.png" : "./Icons/RepeatInActive.png";
       }
@@ -196,6 +208,20 @@
         document.querySelector("#playlist").textContent = json.Entries;
       }
       */
+      // Executes a simple ping request with a very short timeout and sets the IS_BURMI_ON accordingly
+      // Taken from https://stackoverflow.com/questions/1523686/timeout-xmlhttprequest
+      function executePing() {
+        url = "http://" + IP;
+        xmlHttpReq = new XMLHttpRequest();
+        xmlHttpReq.onreadystatechange = function () {
+          if (xmlHttpReq.readyState == 4)
+            IS_BURMI_ON = true;
+        };
+        xmlHttpReq.open("GET", url, true);
+        xmlHttpReq.timeout = 100; // Set timeout to 100 milliseconds
+        xmlHttpReq.ontimeout = function () { console.log("Timeout during Ping"); IS_BURMI_ON = false; return;}
+        xmlHttpReq.send(null);
+      }
       //
       // TODO Document
       // Returns the body of the response as string
@@ -203,6 +229,9 @@
       // https://stackoverflow.com/questions/36975619/how-to-call-a-rest-web-service-api-from-javascript
       // https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
       function executeGetRequest(cmd) {
+        console.log("cmd: " + cmd);
+        if (!IS_BURMI_ON)
+          return;
         encodedCmd = getEncodedURL(cmd);
         authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012";
         let authStringHash = CryptoJS.SHA1(authString);
@@ -253,7 +282,6 @@
         }
         catch(anyException) {
           console.log("Exception happened: " + anyException);
-          //dummyCallback(xmlHttpReq.responseText);
           console.log(xmlHttpReq.statusText);
           console.log(xmlHttpReq.readyState);
           console.log(xmlHttpReq.status);
@@ -287,14 +315,19 @@
   <body>
     <table>
       <tr>
-        <td align="center" onclick="trackPrevious()"><img id="TrackPrevious" alt="Previous" src="./Icons/Play_PreviousInActive.png"></td>
-        <td align="center" onclick="trackPlayOrPause()"><img id="TrackPlayOrPause" alt="PlayOrPause" src="./Icons/Play_PlayInActive.png"></td>
-        <td align="center" onclick="trackStop()"><img id="TrackStop" alt="Play" src="./Icons/Play_StopInActive.png"></td>
-        <td align="center" onclick="trackNext()"><img id="TrackNext" alt="Next" src="./Icons/Play_NextInActive.png"></td>
+        <td align="center" colspan="3" onclick="trackPrevious()"><img id="TrackPrevious" alt="Previous" src="./Icons/Play_PreviousInActive.png"></td>
+        <td align="center" colspan="3" onclick="trackPlayOrPause()"><img id="TrackPlayOrPause" alt="PlayOrPause" src="./Icons/Play_PlayInActive.png"></td>
+        <td align="center" colspan="3" onclick="trackStop()"><img id="TrackStop" alt="Play" src="./Icons/Play_StopInActive.png"></td>
+        <td align="center" colspan="3" onclick="trackNext()"><img id="TrackNext" alt="Next" src="./Icons/Play_NextInActive.png"></td>
       </tr>
       <tr>
-        <td align="center" colspan="2" onclick="toggleRepeat()"><img id="PlayModeRepeat" alt="Repeat" src="./Icons/RepeatInActive.png"></td>
-        <td align="center" colspan="2" onclick="toggleShuffle()"><img id="PlayModeShuffle" alt="Shuffle" src="./Icons/ShuffleInActive.png"></td>
+        <td align="center" colspan="6" onclick="toggleRepeat()"><img id="PlayModeRepeat" alt="Repeat" src="./Icons/RepeatInActive.png"></td>
+        <td align="center" colspan="6" onclick="toggleShuffle()"><img id="PlayModeShuffle" alt="Shuffle" src="./Icons/ShuffleInActive.png"></td>
+      </tr>
+      <tr>
+        <td align="center" colspan="4" onclick="xx()">CD (ToDo)</td>
+        <td align="center" colspan="4" onclick="xx()">Tidal (ToDo)</td>
+        <td align="center" colspan="4" onclick="xx()">Radio (ToDo)</td>
       </tr>
     </table>
     <br>
@@ -327,7 +360,8 @@
     <br>
     <br>
     <br>
-    <small align="center">© Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk<BR>Runs currently only on a browser instance for which CORS and other web security are turned off!<BR>Never use the same browser instance for other work, unless you know what you're doing!
+    <p align="center"><small>
+      © Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk<BR>Runs currently only on a browser instance for which CORS and other web security are turned off!<BR>Never use the same browser instance for other work, unless you know what you're doing!
     </small>
   </body>
 </html>
