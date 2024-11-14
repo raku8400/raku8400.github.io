@@ -10,15 +10,14 @@
     <script>
       // Note
       // Runs currently only on a browser instance for which CORS and other web security is turned off
-      // For Safari: Einstellungen/Entickler/Ursprungsübergreifende Beschränkunken deaktivieren (Default=unchecked, Unsicher = Checked)
-      // For Chrome: Siehe https://stackoverflow.com/questions/74374213/how-to-disable-cross-origin-restriction-in-chrome
-      //             "C:\Program Files\Google\Chrome\Application\chrome.exe" --disable-web-security --disable-gpu --user-data-dir=C:\Users\Public\Documents
+      // For Safari:  Einstellungen/Entickler/Ursprungsübergreifende Beschränkunken deaktivieren (Default=unchecked, Unsicher = Checked)
+      // For Chrome:  Siehe https://stackoverflow.com/questions/74374213/how-to-disable-cross-origin-restriction-in-chrome
+      //              "C:\Program Files\Google\Chrome\Application\chrome.exe" --disable-web-security --disable-gpu --user-data-dir=C:\Users\Public\Documents
       // For Firefox: Unklar
       // TODO Switch Player fehlt noch
       // TODO Tidal Webpage ist noch cool
-      // TODO Initialisierung zu Beginn fehlt noch (is_running, player etc). Oder funktioniert glaubs noch nicht immer ganz richtig
+      // TODO Initialisierung zu Beginn funktioniert glaubs noch nicht immer ganz richtig?
       // TODO FavIcon fehlt noch bzgl. Gestaltung
-      // TODO Wenn man den Player mitten während des Anzeigens der Webseite ausschaltet, kriegt man das hier nicht mit
       // TODO Die Page müsste sich alle paar Sekunden selbst initialisieren (z.B. wenn ein Titel wechselt, oder jemand anders via App/Gerät ändert)
       // TODO Die Warnungen der Browser-Konsole muessen noch raus
       //
@@ -204,6 +203,13 @@
         document.getElementById('trackImage').src = PLAYED_TRACK_IMAGE_URL;
       }
       //
+      // TODO Funktioniert das? TODO Document
+      function changePlayer(player) {
+        // Momentan Radio hartcoded
+        cmd = '{"Media_Obj" : "Radio", "AudioPlayList" : {"Method" : "GetPlayList"}}';
+        executeGetRequest(cmd);
+        retrieveTrackPlayState();    
+      }
       // TODO ab hier funktioniert es noch nicht
       /*
       function getRadioPlaylist() {
@@ -321,14 +327,12 @@
         <td align="center" colspan="6" onclick="toggleShuffle()"><img id="PlayModeShuffle" alt="Shuffle" src="./Icons/ShuffleInActive.png"></td>
       </tr>
       <tr>
-        <td align="center" colspan="6" style="width: 50%;"><div id="trackTitle" style="color:#aaa3a3"></div></td>
-        <td align="center" colspan="6" rowspan="3" style="width: 50%;"> <img id="trackImage" src="" alt="Track Image" width="320" height="320"> </td>
-      </tr>
-      <tr>
-        <td align="center" colspan="6" ><div id="albumTitle" style="color:#aaa3a3"></div></td>
-      </tr>
-      <tr>
-        <td align="center" colspan="6" ><div id="artistName" style="color:#aaa3a3"></div></td>
+        <td style="text-align: center; vertical-align: middle;" colspan="6" style="width: 50%;">
+          <div id="trackTitle" style="color:#aaa3a3"></div><BR>
+          <div id="albumTitle" style="color:#aaa3a3"></div><BR>
+          <div id="artistName" style="color:#aaa3a3"></div>
+        </td>
+        <td align="center" colspan="6" style="width: 50%;"> <img id="trackImage" src="" alt="Track Image" width="320" height="320"> </td>
       </tr>
       <tr>
         <td align="center" colspan="4" onclick="changePlayer('local')">CD (ToDo)</td>
@@ -361,7 +365,7 @@
     <br>
     <br>
     <p align="center"><small>
-      © Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk<BR>Runs currently only on a browser instance for which CORS and other web security are turned off!<BR>Never use the same browser instance for other work, unless you know what you're doing!
+      © Copyright Diana und Ralf Kulik 2022 - 2024<BR>Use at your own risk!<BR>Works only on a browser instance for which CORS web security is turned off!<BR>Never use the same browser instance for other web pages, unless you really know what you're doing!
     </small>
   </body>
 </html>
