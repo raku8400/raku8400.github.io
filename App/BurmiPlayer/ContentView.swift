@@ -27,10 +27,19 @@ struct ContentView: View {
                 Button(action: {
                     greet(crrntMsg: "Previous button was tapped")
                 }) {
-                    Image("Play_PreviousActive")
+                    Image(IS_BURMI_ON ? "Play_PreviousActive" : "Play_PreviousInActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
+                
+                /*
+                 if (IS_BURMI_ON)
+                   IS_TRACK_PLAYING ? "./Icons/Play_PauseActive.png" : "./Icons/Play_PlayActive.png";
+                 else
+                    "./Icons/Play_PlayInActive.png";
+                 */
+                
+                
                 Button(action: {
                     greet(crrntMsg: "Play/Play button was tapped")
                     IS_TRACK_PLAYING = !(IS_TRACK_PLAYING)
@@ -42,43 +51,48 @@ struct ContentView: View {
                 Button(action: {
                     greet(crrntMsg: "Stop button was tapped")
                 }) {
-                    Image("Play_StopActive")
+                    Image(IS_BURMI_ON ? "Play_StopActive" : "Play_StopInActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
                     greet(crrntMsg: "Forward button was tapped")
                 }) {
-                    Image("Play_NextActive")
+                    Image(IS_BURMI_ON ? "Play_NextActive" : "Play_NextInActive")
+                        .resizable()
+                        .frame(width: 68, height: 68)
+                }
+            }
+            HStack {
+                Button(action: {
+                    greet(crrntMsg: "Repeat button was tapped")
+                    IS_MODE_REPEAT = !(IS_MODE_REPEAT)
+                }) {
+                    Image(IS_MODE_REPEAT ? "RepeatActive" : "RepeatInActive")
+                        .resizable()
+                        .frame(width: 68, height: 68)
+                }
+                Button(action: {
+                    greet(crrntMsg: "Shuffle button was tapped")
+                    IS_MODE_SHUFFLE = !(IS_MODE_SHUFFLE)
+                }) {
+                    Image(IS_MODE_SHUFFLE ? "ShuffleActive" : "ShuffleInActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
             }}}
-    
-    /*
-     // TODO nachfolgende IFs einbauen
-     if (IS_BURMI_ON)
-       IS_TRACK_PLAYING ? "./Icons/Play_PauseActive.png" : "./Icons/Play_PlayActive.png";
-     else
-        "./Icons/Play_PlayInActive.png";
-     document.getElementById("TrackStop").src = IS_BURMI_ON ? "./Icons/Play_StopActive.png" : "./Icons/Play_StopInActive.png" ;
-     document.getElementById("TrackPrevious").src = IS_BURMI_ON ? "./Icons/Play_PreviousActive.png" : "./Icons/Play_PreviousInActive.png" ;
-     document.getElementById("TrackNext").src = IS_BURMI_ON ? "./Icons/Play_NextActive.png" : "./Icons/Play_NextInActive.png" ;
-     document.getElementById("PlayModeShuffle").src = IS_MODE_SHUFFLE ? "./Icons/ShuffleActive.png" : "./Icons/ShuffleInActive.png";
-     document.getElementById("PlayModeRepeat").src = IS_MODE_REPEAT ? "./Icons/RepeatActive.png" : "./Icons/RepeatInActive.png";
-     */
-    
 }
 
-func updateAllIcons()
-{
-    //print("Hello World:" + crrntMsg)
-}
+//
+//func updateAllIcons()
+//{
+//    //print("Hello World:" + crrntMsg)
+//}
 
 // TODO Dummy Function noch anpassen
 func greet(crrntMsg: String)
 {
-    print("Hello World:" + crrntMsg)
+    print("BurmiApp: " + crrntMsg)
 }
 
 struct ContentView_Previews: PreviewProvider {
