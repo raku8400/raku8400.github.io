@@ -1,8 +1,7 @@
 //
 //  ContentView.swift
-//  WhyNotTry
 //
-//  Created by Tim Condon on 14/02/2023.
+//  Created by Ralf Kulik
 //
 
 import SwiftUI
@@ -19,6 +18,8 @@ struct ContentView: View {
     @State var IS_MODE_SHUFFLE = false
     // True if player is currently in repeate mode
     @State var IS_MODE_REPEAT = false
+    
+    
     
     var body: some View {
         VStack {
@@ -67,6 +68,11 @@ struct ContentView: View {
      document.getElementById("PlayModeRepeat").src = IS_MODE_REPEAT ? "./Icons/RepeatActive.png" : "./Icons/RepeatInActive.png";
      */
     
+}
+
+func updateAllIcons()
+{
+    //print("Hello World:" + crrntMsg)
 }
 
 // TODO Dummy Function noch anpassen

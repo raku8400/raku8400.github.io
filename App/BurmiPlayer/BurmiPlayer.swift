@@ -1,14 +1,14 @@
 //
-//  WhyNotTryApp.swift
+//  BurmiPlayer.swift
 //  WhyNotTry
 //
-//  Created by Tim Condon on 14/02/2023.
+//  Created by Ralf Kulik
 //
 
 import SwiftUI
 
 @main
-struct WhyNotTryApp: App {
+struct BurmiPlayer: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
