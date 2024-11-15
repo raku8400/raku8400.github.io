@@ -1,9 +1,7 @@
 //
 //  BurmiPlayer.swift
-//  WhyNotTry
 //
-//  Created by Ralf Kulik
-//
+//  Created by Ralf Kulik (c) 2024
 
 import SwiftUI
 

@@ -1,8 +1,7 @@
 //
 //  ContentView.swift
 //
-//  Created by Ralf Kulik
-//
+//  Created by Ralf Kulik (c) 2024
 
 import SwiftUI;
 import CommonCrypto;
@@ -30,8 +29,8 @@ struct ContentView: View {
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
-                    logMsg(crrntMsg: "Play/Pause button was tapped")
                     IS_TRACK_PLAYING = !(IS_TRACK_PLAYING)
+                    (IS_BURMI_ON ? trackPlayOrPause(isTrackPlaying: IS_TRACK_PLAYING) : logMsg(crrntMsg: "Burmi off"))
                 }) {
                     Image(IS_BURMI_ON ? (IS_TRACK_PLAYING ? "Play_PauseActive" : "Play_PlayActive") : "Play_PlayInActive")
                         .resizable()
@@ -82,7 +81,12 @@ let IP = "192.168.1.106"
 //{
 //    //print("Hello World:" + crrntMsg)
 //}
-
+//
+// Starts or pauses playing of a currently active track
+func trackPlayOrPause(isTrackPlaying: Bool) {
+    let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"" +  (isTrackPlaying ? "Play" : "Pause") + "\"}}}"
+    executeGetRequest(cmd: cmd)
+}
 //
 // Moves to the next played track
 func trackNext() {
@@ -151,6 +155,7 @@ func executeGetRequest(cmd: String) {
     let URL_SUF = "_[MC_JSON]_"
     let urlString = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
     var request = URLRequest(url: URL(string: urlString)!)
+    print("url: " + cmd)
     request.httpMethod = "GET"
     //request.addValue(IP, forHTTPHeaderField: "Host")
     //request.addValue("keep-alive", forHTTPHeaderField: "Connection")
