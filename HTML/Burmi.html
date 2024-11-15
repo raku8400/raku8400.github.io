@@ -267,6 +267,7 @@
         // Suffix of URL (part directly before the param)
         var URL_SUF = "_[MC_JSON]_";
         url = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
+        console.log("URL: " + url)
         xmlHttpReq = new XMLHttpRequest();
         // Unfortunately Burmi API does not support CORS. In order to not flood the console, let's just swallow every error
         try {
