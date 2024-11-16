@@ -6,6 +6,13 @@
 import SwiftUI;
 import CommonCrypto;
 
+/* TODO
+ * Die Zustände müssen noch initial gelesen werden (z.B. of Shuffle TRUE ist)
+ * Self-Refresh alle X Sek
+ * Irgendwie muss man noch auf die State-Attribute von aussen zugreifen können?
+ * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä.
+ 
+*/
 
 struct ContentView: View {
     
@@ -14,9 +21,9 @@ struct ContentView: View {
     // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
     @State var IS_TRACK_PLAYING = true
     // True if player is currently in shuffle mode
-    @State var IS_MODE_SHUFFLE = false
+    @State var IS_MODE_SHUFFLE = true
     // True if player is currently in repeate mode
-    @State var IS_MODE_REPEAT = false
+    @State var IS_MODE_REPEAT = true
     
     var body: some View {
         VStack {
@@ -55,32 +62,62 @@ struct ContentView: View {
                 Button(action: {
                     IS_MODE_REPEAT = !(IS_MODE_REPEAT)
                     toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
+                    logState(isBurmiOn: IS_BURMI_ON, isTrackPlaying: IS_TRACK_PLAYING, isShuffle: IS_MODE_SHUFFLE, isRepeat: IS_MODE_REPEAT)
                 }) {
                     Image(IS_MODE_REPEAT ? "RepeatActive" : "RepeatInActive")
                         .resizable()
-                        .frame(width: 68, height: 68)
+                        .frame(width: 34, height: 34)
                 }
                 Button(action: {
                     IS_MODE_SHUFFLE = !(IS_MODE_SHUFFLE)
                     toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
+                    logState(isBurmiOn: IS_BURMI_ON, isTrackPlaying: IS_TRACK_PLAYING, isShuffle: IS_MODE_SHUFFLE, isRepeat: IS_MODE_REPEAT)
                 }) {
                     Image(IS_MODE_SHUFFLE ? "ShuffleActive" : "ShuffleInActive")
                         .resizable()
-                        .frame(width: 68, height: 68)
+                        .frame(width: 34, height: 34)
                 }
-            }}}
+            }
+            Spacer()
+            VStack{
+            Image(IS_BURMI_ON ? (IS_TRACK_PLAYING ? "Play_PauseActive" : "Play_PlayActive") : "Play_PlayInActive")
+                .resizable()
+                .frame(width: 160, height: 160)
+                
+            }
+            Spacer()
+            VStack{
+                Text("Title " + "xx")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("Artist " + "xx")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("Album " + "xx")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }}
 }
 
 let IP = "192.168.1.106"
 
 // TODO: Irgendwie muss ich noch die STATE Variablen in der Struktur oben von hier aus aktualisieren können
 
+func logState(isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
+    let msg = "Burmi On: " + String(isBurmiOn) + ", Track Playing: " + String(isTrackPlaying) + ", Shuffle: " + String(isShuffle) + ", Repeat: " + String(isRepeat)
+    print(msg)
+}
 
-// vermutlich nicht nötig, da implizit im Button definiert
-//func updateAllIcons()
-//{
-//    //print("Hello World:" + crrntMsg)
-//}
+
+//
+// Retrieves information about the currently active track
+func retrieveTrackInfo(isTrackPlaying: Bool) {
+  if (isTrackPlaying) {
+    let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
+    executeGetRequest(cmd: cmd);
+  }
+}
 //
 // Starts or pauses playing of a currently active track
 func trackPlayOrPause(isTrackPlaying: Bool) {
@@ -129,8 +166,8 @@ func getEncodedURL(url: String) -> String {
     }
     return retValue
 }
-
-// TODO Document
+//
+// Helper to create a SHA1 string
 // Source: https://stackoverflow.com/questions/25761344/how-to-hash-nsstring-with-sha1-in-swift
 extension String {
     func sha1() -> String {
@@ -157,31 +194,15 @@ func executeGetRequest(cmd: String) {
     var request = URLRequest(url: URL(string: urlString)!)
     print("url: " + cmd)
     request.httpMethod = "GET"
-    //request.addValue(IP, forHTTPHeaderField: "Host")
-    //request.addValue("keep-alive", forHTTPHeaderField: "Connection")
-    //request.addValue("no-cache", forHTTPHeaderField: "Cache-Control")
-    //request.addValue("PostmanRuntime/7.42.0", forHTTPHeaderField: "User-Agent")
-    //request.addValue("*/*", forHTTPHeaderField: "Accept")
-    //request.addValue("gzip, deflate", forHTTPHeaderField: "Accept-Encoding")
-    //let username = "user"
-    //let password = "pass"
-    //let loginString = String(format: "%@:%@", username, password)
-    //let loginData = loginString.data(using: String.Encoding.utf8)!
-    //let base64LoginString = loginData.base64EncodedString()
-    //request.setValue("Basic \(base64LoginString)", forHTTPHeaderField: "Authorization")
-    //request.addValue("http://192.168.1.106/html5/big_player.html", forHTTPHeaderField: "Referer")
-    //request.httpBody = nil
 
     let session = URLSession.shared
     let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-        print("data")
-        print(data!)
-        if let httpResponse = response as? HTTPURLResponse {
-            print("statusCode: \(httpResponse.statusCode)")} 
+        //if let httpResponse = response as? HTTPURLResponse {
+        //    print("statusCode: \(httpResponse.statusCode)")}
         let responseData = String(data: data!, encoding: String.Encoding(rawValue: NSUTF8StringEncoding))
-        
-        print("response")
+        print("Response:")
         print(responseData as Any)
+        /*
         do {
             let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
             print("Data-JSON")
@@ -189,68 +210,11 @@ func executeGetRequest(cmd: String) {
         } catch {
             print("error")
         }
+        */
     })
 
     task.resume()
-    /*
-    // create the session object
-    let session = URLSession.shared
-    
-    // now create the URLRequest object using the url object
-    var request = URLRequest(url: url)
-    request.httpMethod = "POST" //set http method as POST
-    
-    // add headers for the request
-    //request.addValue("application/json", forHTTPHeaderField: "Content-Type") // change as per server requirements
-    //request.addValue("application/json", forHTTPHeaderField: "Accept")
-    let parameters: [String: Any] = [:]/*
-    do {
-      // convert parameters to Data and assign dictionary to httpBody of request
-      request.httpBody = try JSONSerialization.data(withJSONObject: parameters, options: .prettyPrinted)
-    } catch let error {
-      print(error.localizedDescription)
-      return
-    }*/
-    
-    // create dataTask using the session object to send data to the server
-    let task = session.dataTask(with: request) { data, response, error in
-      
-      if let error = error {
-        print("Post Request Error: \(error.localizedDescription)")
-        return
-      }
-      
-      // ensure there is valid response code returned from this HTTP response
-      guard let httpResponse = response as? HTTPURLResponse,
-            (200...299).contains(httpResponse.statusCode)
-      else {
-        print("Invalid Response received from the server")
-        return
-      }
-    
-      // ensure there is data returned
-      guard let responseData = data else {
-        print("nil Data received from the server")
-        return
-      }
-      /*
-      do {
-        // create json object from data or use JSONDecoder to convert to Model stuct
-        if let jsonResponse = try JSONSerialization.jsonObject(with: responseData, options: .mutableContainers) as? [String: Any] {
-          print(jsonResponse)
-          // handle json response
-        } else {
-          print("data maybe corrupted or in wrong format")
-          throw URLError(.badServerResponse)
-        }
-      } catch let error {
-        print(error.localizedDescription)
-      }*/
-        logMsg(crrntMsg: "data: " )
-    }
-    // perform the task
-    task.resume()
-        */
+
 }
 
 
