@@ -1,6 +1,31 @@
 {
   "images" : [
     {
+      "filename" : "1x1_BUR_Web_151_Front-760x760.png",
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "1x1_S_BUR_Web_151_Front_01-760x760.png",
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "tinted"
+        }
+      ],
+      "filename" : "1x1_S_BUR_Web_151_Front_01-760x760 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
