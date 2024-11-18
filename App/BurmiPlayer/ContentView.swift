@@ -9,7 +9,7 @@ import CommonCrypto;
 /* TODO
  * Self-Refresh alle X Sek
  * Irgendwie muss man noch auf die State-Attribute von aussen zugreifen können?
- * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä.
+ * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
  * Wiki-Links noch einfügen
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
 */
@@ -147,7 +147,8 @@ struct ContentView: View {
         }}
 }
 
-let IP = "192.168.1.106"
+let IP = "192.168.1.106"  // es war auch schon mal 115
+//let IP = "musiccenter151.local" -> gibt nur die HTML Seite zurück, aber keine Info über die IP Adresse
 
 /*
 func logState(isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
@@ -282,7 +283,7 @@ func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
     var request = URLRequest(url: URL(string: urlString)!)
     //print("URL:" + urlString)
     request.httpMethod = "GET"
-    let (data, _, error) = URLSession.shared.synchronousDataTask(urlrequest: request)
+    let (data, resp, error) = URLSession.shared.synchronousDataTask(urlrequest: request)
     if let error = error {
         print("Synchronous task ended with error: \(error)")
     }
