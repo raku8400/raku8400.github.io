@@ -7,7 +7,6 @@ import SwiftUI;
 import CommonCrypto;
 
 /* TODO
- * Die Zustände müssen noch initial gelesen werden (z.B. of Shuffle TRUE ist)
  * Self-Refresh alle X Sek
  * Irgendwie muss man noch auf die State-Attribute von aussen zugreifen können?
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä.
@@ -15,38 +14,58 @@ import CommonCrypto;
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
 */
 
-struct PlayedTrack: Codable {
-    var Name: String
-    var Artist: String
-    var Album: String
-    var Image: String
-}
 
 struct ContentView: View {
     
     // True if Burmi is online, otherwise False
-    @State var IS_BURMI_ON:Bool = true
+    @State var IS_BURMI_ON: Bool
     // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
-    @State var IS_TRACK_PLAYING:Bool = true
+    @State var IS_TRACK_PLAYING: Bool
     // True if player is currently in shuffle mode
-    @State var IS_MODE_SHUFFLE:Bool = true
+    @State var IS_MODE_SHUFFLE: Bool
     // True if player is currently in repeate mode
-    @State var IS_MODE_REPEAT:Bool = true
+    @State var IS_MODE_REPEAT: Bool
     // Name of the currently active track
-    @State var ACTIVE_TRACK: String = ""
+    @State var ACTIVE_TRACK: String
     // Name of the currently active artist
-    @State var ACTIVE_ARTIST: String = ""
+    @State var ACTIVE_ARTIST: String
     // Name of the currently active album
-    @State var ACTIVE_ALBUM: String = ""
+    @State var ACTIVE_ALBUM: String
     // URL for cover info for the currently active track
-    @State var ACTIVE_COVER_URL: String = ""
+    @State var ACTIVE_COVER_URL: String
+    
+    // Initializes the various state variables
+    // Source https://stackoverflow.com/questions/56691630/swiftui-state-var-initialization-issue
+    init () {
+        var isBurmiOn: Bool
+        var isTrackPlaying: Bool
+        var isShuffle: Bool
+        var isRepeat: Bool
+        var track: String
+        var album: String
+        var artist: String
+        var coverURL: String
+        (track, artist, album, coverURL) = retrieveTrackInfo()
+        _ACTIVE_TRACK = State(initialValue: track)
+        _ACTIVE_ARTIST = State(initialValue: artist)
+        _ACTIVE_ALBUM = State(initialValue: album)
+        _ACTIVE_COVER_URL = State(initialValue: coverURL)
+        (isBurmiOn, isTrackPlaying, isShuffle, isRepeat) = retrievePlayerInfo()
+        _IS_BURMI_ON = State(initialValue: isBurmiOn)
+        _IS_TRACK_PLAYING = State(initialValue: isTrackPlaying)
+        _IS_MODE_SHUFFLE = State(initialValue: isShuffle)
+        _IS_MODE_REPEAT = State(initialValue: isRepeat)
+    }
     
     var body: some View {
         VStack {
             HStack {
                 Button(action: {
                     trackPrevious()
+                    // TODO Ralf. Geht das irgendwie besser
                     sleep(1)
+                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                    print("IS_MODE_SHUFFLE" + String(IS_MODE_SHUFFLE))
                     (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                 }) {
                     Image(IS_BURMI_ON ? "Play_PreviousActive" : "Play_PreviousInActive")
@@ -54,9 +73,9 @@ struct ContentView: View {
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
-                    IS_TRACK_PLAYING = !(IS_TRACK_PLAYING)
-                    trackPlayOrPause(isTrackPlaying: IS_TRACK_PLAYING)
+                    trackPlayOrPause(isTrackPlaying: !(IS_TRACK_PLAYING))
                     sleep(1)
+                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
                     (self.ACTIVE_TRACK, self.ACTIVE_ARTIST, self.ACTIVE_ALBUM, self.ACTIVE_COVER_URL) = retrieveTrackInfo()
                 }) {
                     Image(IS_BURMI_ON ? (IS_TRACK_PLAYING ? "Play_PauseActive" : "Play_PlayActive") : "Play_PlayInActive")
@@ -66,6 +85,7 @@ struct ContentView: View {
                 Button(action: {
                     trackStop()
                     sleep(1)
+                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
                     (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                 }) {
                     Image(IS_BURMI_ON ? "Play_StopActive" : "Play_StopInActive")
@@ -75,6 +95,7 @@ struct ContentView: View {
                 Button(action: {
                     trackNext()
                     sleep(1)
+                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
                     (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                 }) {
                     Image(IS_BURMI_ON ? "Play_NextActive" : "Play_NextInActive")
@@ -84,20 +105,22 @@ struct ContentView: View {
             }
             HStack {
                 Button(action: {
-                    IS_MODE_REPEAT = !(IS_MODE_REPEAT)
                     toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
+                    //sleep(1)
+                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
                     (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    logState(isBurmiOn: IS_BURMI_ON, isTrackPlaying: IS_TRACK_PLAYING, isShuffle: IS_MODE_SHUFFLE, isRepeat: IS_MODE_REPEAT)
+                    //logState(isBurmiOn: IS_BURMI_ON, isTrackPlaying: IS_TRACK_PLAYING, isShuffle: IS_MODE_SHUFFLE, isRepeat: IS_MODE_REPEAT)
                 }) {
                     Image(IS_MODE_REPEAT ? "RepeatActive" : "RepeatInActive")
                         .resizable()
                         .frame(width: 34, height: 34)
                 }
                 Button(action: {
-                    IS_MODE_SHUFFLE = !(IS_MODE_SHUFFLE)
                     toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
+                    //sleep(1)
+                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
                     (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    logState(isBurmiOn: IS_BURMI_ON, isTrackPlaying: IS_TRACK_PLAYING, isShuffle: IS_MODE_SHUFFLE, isRepeat: IS_MODE_REPEAT)
+                    //logState(isBurmiOn: IS_BURMI_ON, isTrackPlaying: IS_TRACK_PLAYING, isShuffle: IS_MODE_SHUFFLE, isRepeat: IS_MODE_REPEAT)
                 }) {
                     Image(IS_MODE_SHUFFLE ? "ShuffleActive" : "ShuffleInActive")
                         .resizable()
@@ -126,29 +149,31 @@ struct ContentView: View {
 
 let IP = "192.168.1.106"
 
-// TODO: Irgendwie muss ich noch die STATE Variablen in der Struktur oben von hier aus aktualisieren können
-
+/*
 func logState(isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
     let msg = "Burmi On: " + String(isBurmiOn) + ", Track Playing: " + String(isTrackPlaying) + ", Shuffle: " + String(isShuffle) + ", Repeat: " + String(isRepeat)
     print(msg)
 }
+ */
+ 
+// Retrieves information about the current play mode
+// TODO Ralf Player noch ergänzen (Radio/CD/Tidal/NONE)
+func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
+    let cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : { \"AudioGetInfo\" : { \"Method\" : \"GetPlayState\"}}}"
+    let resp = executeGetRequest(cmd: cmd)
+    return (true, (resp["PlayState"] as! String == "Play"), (resp["Shuffle"] as! Bool), (resp["Repeat"] as! Bool))
+    /*
+    {"BufferLevel":100,"EffectFilter":-1,"InputName":"Linionik Pipe Player","Media_Obj":"Linionik Pipe Player","PlayState":"Play","Repeat":false,"Result":["OK"],"Shuffle":false}
+     */
+}
 //
-// Retrieves information about the currently active track after a delay
+// Retrieves information about the currently active track
 func retrieveTrackInfo() -> (title: String, artist: String, album: String, coverUrl: String) {
-    var title:String = ""
-    var artist:String = ""
-    var album:String = ""
-    var coverUrl = ""
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
     let resp = executeGetRequest(cmd: cmd)
-    let jsonP = resp["SongInfo"] as! [String:Any]
-    title = jsonP["Title"] as! String
-    artist = jsonP["Artist"] as! String
-    album = jsonP["Album"] as! String
-    let jsonPP = resp["SongDictionary"] as! [String:Any]
-    coverUrl = jsonPP["Cover"] as! String
-    print("Title: " + title + ", Album: " + album + ", Artist: " + artist + ", CoverURL: " + coverUrl)
-    return (title, artist, album, coverUrl)
+    let jsonSongInfo = resp["SongInfo"] as! [String:Any]
+    let jsonSongDictionary = resp["SongDictionary"] as! [String:Any]
+    return ((jsonSongInfo["Title"] as! String), (jsonSongInfo["Artist"] as! String), (jsonSongInfo["Album"] as! String), (jsonSongDictionary["Cover"] as! String))
   
 }
 //
@@ -215,7 +240,7 @@ extension String {
 }
 
 
-// TODO Ralf: Braucht es das jetzt wirklich noch
+// TODO Ralf: Braucht es das jetzt wirklich noch, scheinbar schon, ist aber evtl. noch nicht genieal?
 // Source: https://stackoverflow.com/questions/26784315/can-i-somehow-do-a-synchronous-http-request-via-nsurlsession-in-swift
 extension URLSession {
     func synchronousDataTask(urlrequest: URLRequest) -> (data: Data?, response: URLResponse?, error: Error?) {
@@ -240,8 +265,8 @@ extension URLSession {
     }
 }
 
+
 // TODO Document, noch etwas clean-up
-//func executeGetRequest(cmd: String, completion: @escaping ([String: Any]?, Error?) -> Void) {
 func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
     let encodedCmd = getEncodedURL(url: cmd)
     let authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012"
@@ -251,11 +276,11 @@ func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
     // Suffix of URL (part directly before the param)
     let URL_SUF = "_[MC_JSON]_"
     let urlString = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
-    
+    // Initialize return value
     var json = [String: AnyObject]()
-
+    // Initialize HTTP Request
     var request = URLRequest(url: URL(string: urlString)!)
-    //request.httpBody = body
+    //print("URL:" + urlString)
     request.httpMethod = "GET"
     let (data, _, error) = URLSession.shared.synchronousDataTask(urlrequest: request)
     if let error = error {
@@ -270,38 +295,8 @@ func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
             print("error")
         }
     }
+    //print(json)
     return json
-
-    
-    /* TODO RALF BEGIN war lauffähig
-    
-    var request = URLRequest(url: URL(string: urlString)!)
-    //print("url: " + cmd)
-    request.httpMethod = "GET"
-    let session = URLSession.shared
-    let task = session.dataTask(with: request, completionHandler: { data, response, error -> Void in
-        //if let httpResponse = response as? HTTPURLResponse {
-        //    print("statusCode: \(httpResponse.statusCode)")}
-        //let responseData = String(data: data!, encoding: String.Encoding(rawValue: NSUTF8StringEncoding))
-        //print("Response:")
-        //print(responseData as Any)
-        //let response = await try urlSession.bytes(for: url)
-        let responseJSON = try? JSONSerialization.jsonObject(with: data!, options: [])
-        if let responseJSON = responseJSON as? [String: Any] {
-            completion(responseJSON, nil)
-        }
-        /*
-        do {
-            let json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-            print("Data-JSON")
-            print(json)
-        } catch {
-            print("error")
-        }
-        */
-    })
-    task.resume()
-    TODO RALF END war lauffähig */
 }
 
 struct ContentView_Previews: PreviewProvider {
