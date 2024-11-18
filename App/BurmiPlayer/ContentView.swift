@@ -10,7 +10,7 @@ import CommonCrypto;
  * Self-Refresh alle X Sek
  * Irgendwie muss man noch auf die State-Attribute von aussen zugreifen können?
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
- * Wiki-Links noch einfügen
+ * Wiki-Links u.ä.m. noch einfügen
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
 */
 
@@ -41,6 +41,7 @@ struct ContentView: View {
         var isTrackPlaying: Bool
         var isShuffle: Bool
         var isRepeat: Bool
+        var player: String // "Radio" for Radio/ "Linionik Pipe Player" for CD / "WiMP Player" for TIDAL
         var track: String
         var album: String
         var artist: String
@@ -59,6 +60,37 @@ struct ContentView: View {
     
     var body: some View {
         VStack {
+            HStack {
+                Button(action: {
+                    setPlayer(player: "Linionik Pipe Player")
+                    sleep(2)
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                }) {
+                    Image("Player_CD")
+                        .resizable()
+                        .frame(width: 68, height: 68)
+                }
+                Button(action: {
+                    setPlayer(player: "Radio")
+                    sleep(1)
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+
+                }) {
+                    Image("Player_Radio")
+                        .resizable()
+                        .frame(width: 68, height: 68)
+                }
+                Button(action: {
+                    setPlayer(player: "WiMP Player")
+                    sleep(1)
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                }) {
+                    Image("Player_Tidal")
+                        .resizable()
+                        .frame(width: 68, height: 68)
+                }
+            }
+            Spacer()
             HStack {
                 Button(action: {
                     trackPrevious()
@@ -157,8 +189,18 @@ func logState(isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: 
 }
  */
  
+// TODO Document
+    
+func setPlayer(player: String) {
+    // TODO hier nicht den obersten Song hartcodieren?
+    let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  5 }}"
+    _ = executeGetRequest(cmd: cmd)
+}
+
+
+    
 // Retrieves information about the current play mode
-// TODO Ralf Player noch ergänzen (Radio/CD/Tidal/NONE)
+// TODO Ralf Player noch ergänzen (Radio/CD/Tidal/NONE) - oder evtl. gar nicht mehr nötig?
 func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : { \"AudioGetInfo\" : { \"Method\" : \"GetPlayState\"}}}"
     let resp = executeGetRequest(cmd: cmd)
@@ -171,10 +213,38 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
 // Retrieves information about the currently active track
 func retrieveTrackInfo() -> (title: String, artist: String, album: String, coverUrl: String) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
-    let resp = executeGetRequest(cmd: cmd)
+    var resp = executeGetRequest(cmd: cmd)
     let jsonSongInfo = resp["SongInfo"] as! [String:Any]
     let jsonSongDictionary = resp["SongDictionary"] as! [String:Any]
-    return ((jsonSongInfo["Title"] as! String), (jsonSongInfo["Artist"] as! String), (jsonSongInfo["Album"] as! String), (jsonSongDictionary["Cover"] as! String))
+    var title: String = ""
+    var artist: String = ""
+    var album: String = ""
+    var coverUrl: String = ""
+    if (resp["InputName"] as! String == "Linionik Pipe Player")
+    {
+        // CD
+        title = (jsonSongInfo["Title"] as! String)
+        artist = (jsonSongInfo["Artist"] as! String)
+        album = (jsonSongInfo["Album"] as! String)
+        coverUrl = (jsonSongDictionary["Cover"] as! String)
+    }
+    if (resp["InputName"] as! String == "Radio")
+    {
+        // CD
+        title = (jsonSongInfo["Title"] as! String)
+        artist = "" // TODO Ralf können wir hier was anderes holen (jsonSongInfo["Artist"] as! String)
+        album = "" // TODO Ralf können wir hier was anderes holen (jsonSongInfo["Album"] as! String)
+        coverUrl = (jsonSongDictionary["Cover"] as! String)
+    }
+    if (resp["InputName"] as! String == "WiMP Player")
+    {
+        // Tidal
+        title = (jsonSongInfo["Title"] as! String)
+        artist = (jsonSongInfo["Artist"] as! String)
+        album = (jsonSongInfo["Album"] as! String)
+        coverUrl = (jsonSongDictionary["Cover"] as! String)
+    }
+    return (title, artist, album, coverUrl)
   
 }
 //
@@ -283,7 +353,7 @@ func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
     var request = URLRequest(url: URL(string: urlString)!)
     //print("URL:" + urlString)
     request.httpMethod = "GET"
-    let (data, resp, error) = URLSession.shared.synchronousDataTask(urlrequest: request)
+    let (data, _, error) = URLSession.shared.synchronousDataTask(urlrequest: request)
     if let error = error {
         print("Synchronous task ended with error: \(error)")
     }
