@@ -8,7 +8,7 @@ import CommonCrypto;
 
 /* TODO
  * Self-Refresh alle X Sek
- * Irgendwie muss man noch auf die State-Attribute von aussen zugreifen können?
+ * Radio-Icon ist noch viel zu gross
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
  * Wiki-Links u.ä.m. noch einfügen
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
@@ -19,6 +19,8 @@ struct ContentView: View {
     
     // True if Burmi is online, otherwise False
     @State var IS_BURMI_ON: Bool
+    // Name of the player
+    @State var PLAYER: String
     // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
     @State var IS_TRACK_PLAYING: Bool
     // True if player is currently in shuffle mode
@@ -46,7 +48,9 @@ struct ContentView: View {
         var album: String
         var artist: String
         var coverURL: String
-        (track, artist, album, coverURL) = retrieveTrackInfo()
+        player = "Linionik Pipe Player" // CD
+        _PLAYER = State(initialValue: player)
+        (track, artist, album, coverURL, isBurmiOn) = retrieveTrackInfo()
         _ACTIVE_TRACK = State(initialValue: track)
         _ACTIVE_ARTIST = State(initialValue: artist)
         _ACTIVE_ALBUM = State(initialValue: album)
@@ -64,16 +68,16 @@ struct ContentView: View {
                 Button(action: {
                     setPlayer(player: "Linionik Pipe Player")
                     sleep(2)
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                 }) {
-                    Image("Player_CD")
+                    Image(PLAYER == "Linionik Pipe Player" ? "Player_CD_Active" : "Player_CD_InActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
                     setPlayer(player: "Radio")
                     sleep(1)
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
 
                 }) {
                     Image("Player_Radio")
@@ -83,7 +87,7 @@ struct ContentView: View {
                 Button(action: {
                     setPlayer(player: "WiMP Player")
                     sleep(1)
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                 }) {
                     Image("Player_Tidal")
                         .resizable()
@@ -97,8 +101,8 @@ struct ContentView: View {
                     // TODO Ralf. Geht das irgendwie besser
                     sleep(1)
                     (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    print("IS_MODE_SHUFFLE" + String(IS_MODE_SHUFFLE))
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                    //print("IS_MODE_SHUFFLE" + String(IS_MODE_SHUFFLE))
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                 }) {
                     Image(IS_BURMI_ON ? "Play_PreviousActive" : "Play_PreviousInActive")
                         .resizable()
@@ -108,7 +112,7 @@ struct ContentView: View {
                     trackPlayOrPause(isTrackPlaying: !(IS_TRACK_PLAYING))
                     sleep(1)
                     (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (self.ACTIVE_TRACK, self.ACTIVE_ARTIST, self.ACTIVE_ALBUM, self.ACTIVE_COVER_URL) = retrieveTrackInfo()
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                 }) {
                     Image(IS_BURMI_ON ? (IS_TRACK_PLAYING ? "Play_PauseActive" : "Play_PlayActive") : "Play_PlayInActive")
                         .resizable()
@@ -118,7 +122,7 @@ struct ContentView: View {
                     trackStop()
                     sleep(1)
                     (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                 }) {
                     Image(IS_BURMI_ON ? "Play_StopActive" : "Play_StopInActive")
                         .resizable()
@@ -128,7 +132,7 @@ struct ContentView: View {
                     trackNext()
                     sleep(1)
                     (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                 }) {
                     Image(IS_BURMI_ON ? "Play_NextActive" : "Play_NextInActive")
                         .resizable()
@@ -140,8 +144,8 @@ struct ContentView: View {
                     toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
                     //sleep(1)
                     (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    //logState(isBurmiOn: IS_BURMI_ON, isTrackPlaying: IS_TRACK_PLAYING, isShuffle: IS_MODE_SHUFFLE, isRepeat: IS_MODE_REPEAT)
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+
                 }) {
                     Image(IS_MODE_REPEAT ? "RepeatActive" : "RepeatInActive")
                         .resizable()
@@ -151,8 +155,7 @@ struct ContentView: View {
                     toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
                     //sleep(1)
                     (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    //logState(isBurmiOn: IS_BURMI_ON, isTrackPlaying: IS_TRACK_PLAYING, isShuffle: IS_MODE_SHUFFLE, isRepeat: IS_MODE_REPEAT)
+                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                 }) {
                     Image(IS_MODE_SHUFFLE ? "ShuffleActive" : "ShuffleInActive")
                         .resizable()
@@ -178,6 +181,10 @@ struct ContentView: View {
             }
         }}
 }
+//
+// Timeout in Milliseconds for normal operations
+let TIMEOUT_NORM_MS = 300
+//
 
 let IP = "192.168.1.106"  // es war auch schon mal 115
 //let IP = "musiccenter151.local" -> gibt nur die HTML Seite zurück, aber keine Info über die IP Adresse
@@ -192,7 +199,7 @@ func logState(isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: 
 // TODO Document
     
 func setPlayer(player: String) {
-    // TODO hier nicht den obersten Song hartcodieren?
+    // TODO hier nicht den n'ten Song hartcodieren - moment hartcodiert 5 (wobei, woher weiss man den letzten Zustand
     let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  5 }}"
     _ = executeGetRequest(cmd: cmd)
 }
@@ -204,16 +211,26 @@ func setPlayer(player: String) {
 func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : { \"AudioGetInfo\" : { \"Method\" : \"GetPlayState\"}}}"
     let resp = executeGetRequest(cmd: cmd)
-    return (true, (resp["PlayState"] as! String == "Play"), (resp["Shuffle"] as! Bool), (resp["Repeat"] as! Bool))
-    /*
-    {"BufferLevel":100,"EffectFilter":-1,"InputName":"Linionik Pipe Player","Media_Obj":"Linionik Pipe Player","PlayState":"Play","Repeat":false,"Result":["OK"],"Shuffle":false}
-     */
+    if (resp.count == 0) {
+        // Burmi is off
+        return (false, false, false, false)
+    } else {
+        return (true, (resp["PlayState"] as! String == "Play"), (resp["Shuffle"] as! Bool), (resp["Repeat"] as! Bool))
+        /*
+         {"BufferLevel":100,"EffectFilter":-1,"InputName":"Linionik Pipe Player","Media_Obj":"Linionik Pipe Player","PlayState":"Play","Repeat":false,"Result":["OK"],"Shuffle":false}
+         */
+    }
 }
 //
 // Retrieves information about the currently active track
-func retrieveTrackInfo() -> (title: String, artist: String, album: String, coverUrl: String) {
+func retrieveTrackInfo() -> (title: String, artist: String, album: String, coverUrl: String, isBurmiOn: Bool) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
-    var resp = executeGetRequest(cmd: cmd)
+    let resp = executeGetRequest(cmd: cmd)
+    if (resp.count == 0)
+    {
+        // Burmi is off
+        return ("", "", "", "", false)
+    }
     let jsonSongInfo = resp["SongInfo"] as! [String:Any]
     let jsonSongDictionary = resp["SongDictionary"] as! [String:Any]
     var title: String = ""
@@ -230,7 +247,7 @@ func retrieveTrackInfo() -> (title: String, artist: String, album: String, cover
     }
     if (resp["InputName"] as! String == "Radio")
     {
-        // CD
+        // Radio
         title = (jsonSongInfo["Title"] as! String)
         artist = "" // TODO Ralf können wir hier was anderes holen (jsonSongInfo["Artist"] as! String)
         album = "" // TODO Ralf können wir hier was anderes holen (jsonSongInfo["Album"] as! String)
@@ -244,7 +261,7 @@ func retrieveTrackInfo() -> (title: String, artist: String, album: String, cover
         album = (jsonSongInfo["Album"] as! String)
         coverUrl = (jsonSongDictionary["Cover"] as! String)
     }
-    return (title, artist, album, coverUrl)
+    return (title, artist, album, coverUrl, true)
   
 }
 //
@@ -309,6 +326,14 @@ extension String {
         return hexBytes.joined()
     }
 }
+/*
+//
+// Make an easy check similar to String.IsNullOrEmpty
+// Source: https://stackoverflow.com/questions/29164670/unwrap-string-and-check-emptiness-in-the-same-if-statement
+public extension Optional where Wrapped == String {
+    var isEmptyOrNil: Bool { (self ?? "").isEmpty }
+}
+ */
 
 
 // TODO Ralf: Braucht es das jetzt wirklich noch, scheinbar schon, ist aber evtl. noch nicht genieal?
@@ -329,8 +354,7 @@ extension URLSession {
             semaphore.signal()
         }
         dataTask.resume()
-
-        _ = semaphore.wait(timeout: .distantFuture)
+        _ = semaphore.wait(timeout: DispatchTime.now() + DispatchTimeInterval.milliseconds(TIMEOUT_NORM_MS))
 
         return (data, response, error)
     }
@@ -351,20 +375,25 @@ func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
     var json = [String: AnyObject]()
     // Initialize HTTP Request
     var request = URLRequest(url: URL(string: urlString)!)
-    //print("URL:" + urlString)
+    print("URL:" + urlString)
     request.httpMethod = "GET"
     let (data, _, error) = URLSession.shared.synchronousDataTask(urlrequest: request)
     if let error = error {
         print("Synchronous task ended with error: \(error)")
     }
     else {
-        //print("Synchronous task ended without errors.")
-        do {
-            json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-            
-        } catch {
-            print("error")
-        }
+        print("Synchronous task ended without errors.")
+        print(data as Any)
+        if data != nil {
+            print("data <> nil")
+                    do {
+                        json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+                        
+                    } catch {
+                        print("error")
+                    }
+        } else{
+            print("data = nil")}
     }
     //print(json)
     return json
