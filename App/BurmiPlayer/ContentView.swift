@@ -19,7 +19,7 @@ struct ContentView: View {
     
     // True if Burmi is online, otherwise False
     @State var IS_BURMI_ON: Bool
-    // Name of the player
+    // Name of the player: "Radio" for Radio, "Linionik Pipe Player" for CD and "WiMP Player" for TIDAL
     @State var PLAYER: String
     // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
     @State var IS_TRACK_PLAYING: Bool
@@ -43,7 +43,7 @@ struct ContentView: View {
         var isTrackPlaying: Bool
         var isShuffle: Bool
         var isRepeat: Bool
-        var player: String // "Radio" for Radio/ "Linionik Pipe Player" for CD / "WiMP Player" for TIDAL
+        var player: String
         var track: String
         var album: String
         var artist: String
@@ -66,28 +66,33 @@ struct ContentView: View {
         VStack {
             HStack {
                 Button(action: {
-                    setPlayer(player: "Linionik Pipe Player")
-                    sleep(2)
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    if (IS_BURMI_ON) {
+                        setPlayer(player: "Linionik Pipe Player")
+                        sleep(2)
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
                 }) {
                     Image(PLAYER == "Linionik Pipe Player" ? "Player_CD_Active" : "Player_CD_InActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
-                    setPlayer(player: "Radio")
-                    sleep(1)
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
-
+                    if (IS_BURMI_ON) {
+                        setPlayer(player: "Radio")
+                        sleep(1)
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
                 }) {
                     Image("Player_Radio")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
-                    setPlayer(player: "WiMP Player")
-                    sleep(1)
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    if (IS_BURMI_ON) {
+                        setPlayer(player: "WiMP Player")
+                        sleep(1)
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
                 }) {
                     Image("Player_Tidal")
                         .resizable()
@@ -97,42 +102,50 @@ struct ContentView: View {
             Spacer()
             HStack {
                 Button(action: {
-                    trackPrevious()
-                    // TODO Ralf. Geht das irgendwie besser
-                    sleep(1)
-                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    //print("IS_MODE_SHUFFLE" + String(IS_MODE_SHUFFLE))
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    if (IS_BURMI_ON) {
+                        trackPrevious()
+                        // TODO Ralf. Geht das irgendwie besser
+                        sleep(1)
+                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                        //print("IS_MODE_SHUFFLE" + String(IS_MODE_SHUFFLE))
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
                 }) {
                     Image(IS_BURMI_ON ? "Play_PreviousActive" : "Play_PreviousInActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
-                    trackPlayOrPause(isTrackPlaying: !(IS_TRACK_PLAYING))
-                    sleep(1)
-                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    if (IS_BURMI_ON) {
+                        trackPlayOrPause(isTrackPlaying: !(IS_TRACK_PLAYING))
+                        sleep(1)
+                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
                 }) {
                     Image(IS_BURMI_ON ? (IS_TRACK_PLAYING ? "Play_PauseActive" : "Play_PlayActive") : "Play_PlayInActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
-                    trackStop()
-                    sleep(1)
-                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    if (IS_BURMI_ON) {
+                        trackStop()
+                        sleep(1)
+                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
                 }) {
                     Image(IS_BURMI_ON ? "Play_StopActive" : "Play_StopInActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
-                    trackNext()
-                    sleep(1)
-                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    if (IS_BURMI_ON) {
+                        trackNext()
+                        sleep(1)
+                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
                 }) {
                     Image(IS_BURMI_ON ? "Play_NextActive" : "Play_NextInActive")
                         .resizable()
@@ -141,22 +154,25 @@ struct ContentView: View {
             }
             HStack {
                 Button(action: {
-                    toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
-                    //sleep(1)
-                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
-
+                    if (IS_BURMI_ON) {
+                        toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
+                        //sleep(1)
+                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
                 }) {
                     Image(IS_MODE_REPEAT ? "RepeatActive" : "RepeatInActive")
                         .resizable()
                         .frame(width: 34, height: 34)
                 }
                 Button(action: {
-                    toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
-                    //sleep(1)
-                    (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                    (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
-                }) {
+                    if (IS_BURMI_ON) {
+                        toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
+                        //sleep(1)
+                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                    }
+                    }) {
                     Image(IS_MODE_SHUFFLE ? "ShuffleActive" : "ShuffleInActive")
                         .resizable()
                         .frame(width: 34, height: 34)
@@ -183,7 +199,7 @@ struct ContentView: View {
 }
 //
 // Timeout in Milliseconds for normal operations
-let TIMEOUT_NORM_MS = 300
+let TIMEOUT_NORM_MS = 100
 //
 
 let IP = "192.168.1.106"  // es war auch schon mal 115
@@ -375,27 +391,22 @@ func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
     var json = [String: AnyObject]()
     // Initialize HTTP Request
     var request = URLRequest(url: URL(string: urlString)!)
-    print("URL:" + urlString)
+    // print("URL:" + urlString)
     request.httpMethod = "GET"
     let (data, _, error) = URLSession.shared.synchronousDataTask(urlrequest: request)
     if let error = error {
         print("Synchronous task ended with error: \(error)")
-    }
-    else {
-        print("Synchronous task ended without errors.")
-        print(data as Any)
+    } else {
+        //print("Synchronous task ended without errors.")
         if data != nil {
-            print("data <> nil")
-                    do {
-                        json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
-                        
-                    } catch {
-                        print("error")
-                    }
-        } else{
-            print("data = nil")}
+            do {
+                json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
+                
+            } catch {
+                print("error")
+            }
+        }
     }
-    //print(json)
     return json
 }
 
