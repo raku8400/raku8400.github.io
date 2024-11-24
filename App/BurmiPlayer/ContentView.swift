@@ -7,9 +7,10 @@ import SwiftUI;
 import CommonCrypto;
 
 /* TODO
- * Self-Refresh alle X Sek
+ * Der Player Mode ist noch nicht fertig (die Icons fehlen noch inactive, Radio zu gross, und Wechsel des Icons ist noch nicht fertig codiert
  * Radio-Icon ist noch viel zu gross
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
+ * Die ganze Playlist Geschichte fehlt noch
  * Wiki-Links u.ä.m. noch einfügen
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
 */
@@ -35,6 +36,9 @@ struct ContentView: View {
     @State var ACTIVE_ALBUM: String
     // URL for cover info for the currently active track
     @State var ACTIVE_COVER_URL: String
+    // Allows to update the UI every 5 seconds, Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
+    let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+
     
     // Initializes the various state variables
     // Source https://stackoverflow.com/questions/56691630/swiftui-state-var-initialization-issue
@@ -51,6 +55,7 @@ struct ContentView: View {
         player = "Linionik Pipe Player" // CD
         _PLAYER = State(initialValue: player)
         (track, artist, album, coverURL, isBurmiOn) = retrieveTrackInfo()
+        _IS_BURMI_ON = State(initialValue: isBurmiOn)
         _ACTIVE_TRACK = State(initialValue: track)
         _ACTIVE_ARTIST = State(initialValue: artist)
         _ACTIVE_ALBUM = State(initialValue: album)
@@ -107,7 +112,6 @@ struct ContentView: View {
                         // TODO Ralf. Geht das irgendwie besser
                         sleep(1)
                         (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        //print("IS_MODE_SHUFFLE" + String(IS_MODE_SHUFFLE))
                         (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                     }
                 }) {
@@ -195,7 +199,12 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-        }}
+        }.onReceive(timer, perform: { _ in
+            print("Self-Update")
+            (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+            (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+        })
+    }
 }
 //
 // Timeout in Milliseconds for normal operations
@@ -206,7 +215,7 @@ let IP = "192.168.1.106"  // es war auch schon mal 115
 //let IP = "musiccenter151.local" -> gibt nur die HTML Seite zurück, aber keine Info über die IP Adresse
 
 /*
-func logState(isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
+	func logState(isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
     let msg = "Burmi On: " + String(isBurmiOn) + ", Track Playing: " + String(isTrackPlaying) + ", Shuffle: " + String(isShuffle) + ", Repeat: " + String(isRepeat)
     print(msg)
 }
