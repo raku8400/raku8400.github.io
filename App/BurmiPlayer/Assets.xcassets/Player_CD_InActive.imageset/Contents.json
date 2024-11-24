@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Player_CD.png",
+      "filename" : "Player_CD_InActive.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
