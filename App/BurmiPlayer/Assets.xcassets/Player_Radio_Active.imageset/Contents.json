@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Player_Radio.png",
+      "filename" : "Player_Radio_Active.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
