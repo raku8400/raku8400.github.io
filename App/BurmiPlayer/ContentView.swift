@@ -7,8 +7,7 @@ import SwiftUI;
 import CommonCrypto;
 
 /* TODO
- * Der Player Mode ist noch nicht fertig (die Icons fehlen noch inactive, Radio zu gross, und Wechsel des Icons ist noch nicht fertig codiert
- * Radio-Icon ist noch viel zu gross
+ * Evtl. Swipe-Geste auf Track Image zum Forward-Next/Prev
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
  * Die ganze Playlist Geschichte fehlt noch
  * Wiki-Links u.ä.m. noch einfügen
@@ -72,34 +71,40 @@ struct ContentView: View {
             HStack {
                 Button(action: {
                     if (IS_BURMI_ON) {
+                        PLAYER = "Linionik Pipe Player"
                         setPlayer(player: "Linionik Pipe Player")
                         sleep(2)
                         (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                     }
-                }) {
+                })
+                {
                     Image(PLAYER == "Linionik Pipe Player" ? "Player_CD_Active" : "Player_CD_InActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
                     if (IS_BURMI_ON) {
+                        PLAYER = "Radio"
                         setPlayer(player: "Radio")
                         sleep(1)
                         (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                     }
-                }) {
-                    Image("Player_Radio")
+                })
+                
+                {
+                    Image(PLAYER == "Radio" ? "Player_Radio_Active" : "Player_Radio_InActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
                 Button(action: {
                     if (IS_BURMI_ON) {
+                        PLAYER = "WiMP Player"
                         setPlayer(player: "WiMP Player")
                         sleep(1)
                         (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                     }
                 }) {
-                    Image("Player_Tidal")
+                    Image(PLAYER == "WiMP Player" ? "Player_Tidal_Active" : "Player_Tidal_InActive")
                         .resizable()
                         .frame(width: 68, height: 68)
                 }
@@ -138,7 +143,9 @@ struct ContentView: View {
                         (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
                         (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
                     }
-                }) {
+                }
+                    
+                ) {
                     Image(IS_BURMI_ON ? "Play_StopActive" : "Play_StopInActive")
                         .resizable()
                         .frame(width: 68, height: 68)
@@ -184,8 +191,12 @@ struct ContentView: View {
             }
             Spacer()
             VStack{
-            AsyncImage(url: URL(string: ACTIVE_COVER_URL))
-               .frame(width: 160, height: 160)
+            AsyncImage(url: URL(string: ACTIVE_COVER_URL)){ result in
+                result.image?
+                    .resizable()
+                    .scaledToFill()
+            }
+               .frame(width: 240, height: 240)
             }
             Spacer()
             VStack{
@@ -214,12 +225,7 @@ let TIMEOUT_NORM_MS = 100
 let IP = "192.168.1.106"  // es war auch schon mal 115
 //let IP = "musiccenter151.local" -> gibt nur die HTML Seite zurück, aber keine Info über die IP Adresse
 
-/*
-	func logState(isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
-    let msg = "Burmi On: " + String(isBurmiOn) + ", Track Playing: " + String(isTrackPlaying) + ", Shuffle: " + String(isShuffle) + ", Repeat: " + String(isRepeat)
-    print(msg)
-}
- */
+
  
 // TODO Document
     
@@ -240,8 +246,15 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
         // Burmi is off
         return (false, false, false, false)
     } else {
-        return (true, (resp["PlayState"] as! String == "Play"), (resp["Shuffle"] as! Bool), (resp["Repeat"] as! Bool))
+        // Radio does not offer Shuffle/Repeat
+        if (resp["Media_Obj"] as! String == "Radio")
+        {
+            return (true, (resp["PlayState"] as! String == "Play"), false, false)
+        } else {
+            return (true, (resp["PlayState"] as! String == "Play"), (resp["Shuffle"] as! Bool), (resp["Repeat"] as! Bool))
+        }
         /*
+         Beispiel-Antwort
          {"BufferLevel":100,"EffectFilter":-1,"InputName":"Linionik Pipe Player","Media_Obj":"Linionik Pipe Player","PlayState":"Play","Repeat":false,"Result":["OK"],"Shuffle":false}
          */
     }
@@ -351,14 +364,6 @@ extension String {
         return hexBytes.joined()
     }
 }
-/*
-//
-// Make an easy check similar to String.IsNullOrEmpty
-// Source: https://stackoverflow.com/questions/29164670/unwrap-string-and-check-emptiness-in-the-same-if-statement
-public extension Optional where Wrapped == String {
-    var isEmptyOrNil: Bool { (self ?? "").isEmpty }
-}
- */
 
 
 // TODO Ralf: Braucht es das jetzt wirklich noch, scheinbar schon, ist aber evtl. noch nicht genieal?
