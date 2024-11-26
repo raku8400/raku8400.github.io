@@ -53,7 +53,7 @@ struct ContentView: View {
         var coverURL: String
         player = "Linionik Pipe Player" // CD
         _PLAYER = State(initialValue: player)
-        (track, artist, album, coverURL, isBurmiOn) = retrieveTrackInfo()
+        (isBurmiOn, track, artist, album, coverURL) = retrieveTrackInfo()
         _IS_BURMI_ON = State(initialValue: isBurmiOn)
         _ACTIVE_TRACK = State(initialValue: track)
         _ACTIVE_ARTIST = State(initialValue: artist)
@@ -74,7 +74,7 @@ struct ContentView: View {
                         PLAYER = "Linionik Pipe Player"
                         setPlayer(player: "Linionik Pipe Player")
                         sleep(2)
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 })
                 {
@@ -87,7 +87,7 @@ struct ContentView: View {
                         PLAYER = "Radio"
                         setPlayer(player: "Radio")
                         sleep(1)
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 })
                 
@@ -101,7 +101,7 @@ struct ContentView: View {
                         PLAYER = "WiMP Player"
                         setPlayer(player: "WiMP Player")
                         sleep(1)
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 }) {
                     Image(PLAYER == "WiMP Player" ? "Player_Tidal_Active" : "Player_Tidal_InActive")
@@ -117,7 +117,7 @@ struct ContentView: View {
                         // TODO Ralf. Geht das irgendwie besser
                         sleep(1)
                         (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 }) {
                     Image(IS_BURMI_ON ? "Play_PreviousActive" : "Play_PreviousInActive")
@@ -129,7 +129,7 @@ struct ContentView: View {
                         trackPlayOrPause(isTrackPlaying: !(IS_TRACK_PLAYING))
                         sleep(1)
                         (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 }) {
                     Image(IS_BURMI_ON ? (IS_TRACK_PLAYING ? "Play_PauseActive" : "Play_PlayActive") : "Play_PlayInActive")
@@ -141,7 +141,7 @@ struct ContentView: View {
                         trackStop()
                         sleep(1)
                         (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 }
                     
@@ -155,7 +155,7 @@ struct ContentView: View {
                         trackNext()
                         sleep(1)
                         (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 }) {
                     Image(IS_BURMI_ON ? "Play_NextActive" : "Play_NextInActive")
@@ -169,7 +169,7 @@ struct ContentView: View {
                         toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
                         //sleep(1)
                         (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 }) {
                     Image(IS_MODE_REPEAT ? "RepeatActive" : "RepeatInActive")
@@ -181,7 +181,7 @@ struct ContentView: View {
                         toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
                         //sleep(1)
                         (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                     }) {
                     Image(IS_MODE_SHUFFLE ? "ShuffleActive" : "ShuffleInActive")
@@ -212,7 +212,7 @@ struct ContentView: View {
             }
         }.onReceive(timer, perform: { _ in
             print("Self-Update")
-            (ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, IS_BURMI_ON) = retrieveTrackInfo()
+            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
             (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
         })
     }
@@ -232,7 +232,9 @@ let IP = "192.168.1.106"  // es war auch schon mal 115
 func setPlayer(player: String) {
     // TODO hier nicht den n'ten Song hartcodieren - moment hartcodiert 5 (wobei, woher weiss man den letzten Zustand
     let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  5 }}"
-    _ = executeGetRequest(cmd: cmd)
+    let resp = executeGetRequest(cmd: cmd)
+    print("aaa")
+    print(resp)
 }
 
 
@@ -245,6 +247,9 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
     if (resp.count == 0) {
         // Burmi is off
         return (false, false, false, false)
+    } else if (resp["Media_Obj"] as! String == "DefaultZeroPlayer") {
+        // Burmi is on, but no player is active
+        return (true, false, false, false)
     } else {
         // Radio does not offer Shuffle/Repeat
         if (resp["Media_Obj"] as! String == "Radio")
@@ -261,13 +266,18 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
 }
 //
 // Retrieves information about the currently active track
-func retrieveTrackInfo() -> (title: String, artist: String, album: String, coverUrl: String, isBurmiOn: Bool) {
+func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, album: String, coverUrl: String) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
     let resp = executeGetRequest(cmd: cmd)
     if (resp.count == 0)
     {
         // Burmi is off
-        return ("", "", "", "", false)
+        return (false, "", "", "", "")
+    }
+    if (resp["Media_Obj"] as! String == "DefaultZeroPlayer")
+    {
+        // Burmi is on, but no player is active
+        return (true, "", "", "", "")
     }
     let jsonSongInfo = resp["SongInfo"] as! [String:Any]
     let jsonSongDictionary = resp["SongDictionary"] as! [String:Any]
@@ -299,7 +309,7 @@ func retrieveTrackInfo() -> (title: String, artist: String, album: String, cover
         album = (jsonSongInfo["Album"] as! String)
         coverUrl = (jsonSongDictionary["Cover"] as! String)
     }
-    return (title, artist, album, coverUrl, true)
+    return (true, title, artist, album, coverUrl)
   
 }
 //
