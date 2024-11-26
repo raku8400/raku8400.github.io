@@ -5,12 +5,13 @@
 
 import SwiftUI;
 import CommonCrypto;
+import UIKit;
 
 /* TODO
- * Evtl. Swipe-Geste auf Track Image zum Forward-Next/Prev
+ * Wiki Links adden
+ * Evtl. Swipe-Geste auf Track Image zum Forward-Next/Prev -> ist begonnen
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
  * Die ganze Playlist Geschichte fehlt noch
- * Wiki-Links u.ä.m. noch einfügen
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
 */
 
@@ -38,6 +39,25 @@ struct ContentView: View {
     // Allows to update the UI every 5 seconds, Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
     let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
+    /*
+    // TODO Ralf
+    // Create a swipe gesture recognizer
+    let swipeGesture = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
+
+    // Set the direction of the swipe (e.g., right)
+    swipeGesture.direction = .right
+
+    // Add the gesture recognizer to a view
+    yourView.addGestureRecognizer(swipeGesture)
+
+    // Handle the swipe gesture
+    @objc func handleSwipe(_ sender: UISwipeGestureRecognizer) {
+        // Perform the desired action based on the swipe direction
+        if sender.direction == .right {
+            // Handle right swipe
+        }
+    }
+    */
     
     // Initializes the various state variables
     // Source https://stackoverflow.com/questions/56691630/swiftui-state-var-initialization-issue
@@ -90,7 +110,6 @@ struct ContentView: View {
                         (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                     }
                 })
-                
                 {
                     Image(PLAYER == "Radio" ? "Player_Radio_Active" : "Player_Radio_InActive")
                         .resizable()
@@ -187,16 +206,31 @@ struct ContentView: View {
                     Image(IS_MODE_SHUFFLE ? "ShuffleActive" : "ShuffleInActive")
                         .resizable()
                         .frame(width: 34, height: 34)
-                }
+                    }
             }
             Spacer()
             VStack{
-            AsyncImage(url: URL(string: ACTIVE_COVER_URL)){ result in
-                result.image?
-                    .resizable()
-                    .scaledToFill()
-            }
-               .frame(width: 240, height: 240)
+                AsyncImage(url: URL(string: ACTIVE_COVER_URL)){ result in
+                    result.image?
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 240, height: 240)
+                }
+                // TODO Ralf
+                .onTapGesture {print("Tapped on Image")}
+                // https://stackoverflow.com/questions/60885532/how-to-detect-swiping-up-down-left-and-right-with-swiftui-on-a-view
+                .gesture(DragGesture(minimumDistance: 3.0, coordinateSpace: .local)
+                    .onEnded { value in
+                        print(value.translation)
+                        switch(value.translation.width, value.translation.height) {
+                            case (...0, -100...100):  trackNext()     // left swipre
+                            case (0..., -100...10):  trackPrevious() // right swipe
+                            case (-100...100, ...0):  print("up swipe")
+                            case (-100...100, 0...):  print("down swipe")
+                            default:  print("no clue")
+                        }
+                    }
+                )
             }
             Spacer()
             VStack{
@@ -250,19 +284,18 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
     } else if (resp["Media_Obj"] as! String == "DefaultZeroPlayer") {
         // Burmi is on, but no player is active
         return (true, false, false, false)
-    } else {
-        // Radio does not offer Shuffle/Repeat
-        if (resp["Media_Obj"] as! String == "Radio")
-        {
-            return (true, (resp["PlayState"] as! String == "Play"), false, false)
-        } else {
-            return (true, (resp["PlayState"] as! String == "Play"), (resp["Shuffle"] as! Bool), (resp["Repeat"] as! Bool))
-        }
-        /*
-         Beispiel-Antwort
-         {"BufferLevel":100,"EffectFilter":-1,"InputName":"Linionik Pipe Player","Media_Obj":"Linionik Pipe Player","PlayState":"Play","Repeat":false,"Result":["OK"],"Shuffle":false}
-         */
     }
+    if (resp["Media_Obj"] as! String == "Radio")
+    {
+        // Radio does not offer Shuffle/Repeat
+        return (true, (resp["PlayState"] as! String == "Play"), false, false)
+    } else {
+        return (true, (resp["PlayState"] as! String == "Play"), (resp["Shuffle"] as! Bool), (resp["Repeat"] as! Bool))
+    }
+    /*
+     Beispiel-Antwort
+     {"BufferLevel":100,"EffectFilter":-1,"InputName":"Linionik Pipe Player","Media_Obj":"Linionik Pipe Player","PlayState":"Play","Repeat":false,"Result":["OK"],"Shuffle":false}
+     */
 }
 //
 // Retrieves information about the currently active track
@@ -273,8 +306,7 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
     {
         // Burmi is off
         return (false, "", "", "", "")
-    }
-    if (resp["Media_Obj"] as! String == "DefaultZeroPlayer")
+    } else if (resp["Media_Obj"] as! String == "DefaultZeroPlayer")
     {
         // Burmi is on, but no player is active
         return (true, "", "", "", "")
@@ -374,8 +406,6 @@ extension String {
         return hexBytes.joined()
     }
 }
-
-
 // TODO Ralf: Braucht es das jetzt wirklich noch, scheinbar schon, ist aber evtl. noch nicht genieal?
 // Source: https://stackoverflow.com/questions/26784315/can-i-somehow-do-a-synchronous-http-request-via-nsurlsession-in-swift
 extension URLSession {
@@ -399,7 +429,6 @@ extension URLSession {
         return (data, response, error)
     }
 }
-
 
 // TODO Document, noch etwas clean-up
 func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
@@ -439,3 +468,5 @@ struct ContentView_Previews: PreviewProvider {
         ContentView()
     }
 }
+
+
