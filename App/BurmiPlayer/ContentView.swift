@@ -8,16 +8,24 @@ import CommonCrypto;
 import UIKit;
 
 /* TODO
+ * Playlist ->         cmd = '{"Media_Obj" : "Radio", "AudioPlayList" : {"Method" : "GetPlayList"}}'; (vermutlich erster Wert anpassen
+ * Bessere System Images: https://stackoverflow.com/questions/56514998/find-all-available-images-for-imagesystemname
  * Wiki Links adden
  * Evtl. Swipe-Geste auf Track Image zum Forward-Next/Prev -> ist begonnen
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
  * Die ganze Playlist Geschichte fehlt noch
+ * Eine vernünftige Suche nach Songs etc. wäre cool
+ * Auf der ActiveTrack-Seite: Was wäre das Resultat von Swipe Up/Down
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
 */
 
 
 struct ContentView: View {
-    
+    //
+    // Page Nbr to be displayed
+    //   1 = Player with active Track
+    //   2 = TrackList
+    @State var PAGE_NBR: Int8
     // True if Burmi is online, otherwise False
     @State var IS_BURMI_ON: Bool
     // Name of the player: "Radio" for Radio, "Linionik Pipe Player" for CD and "WiMP Player" for TIDAL
@@ -36,7 +44,7 @@ struct ContentView: View {
     @State var ACTIVE_ALBUM: String
     // URL for cover info for the currently active track
     @State var ACTIVE_COVER_URL: String
-    // Allows to update the UI every 5 seconds, Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
+    // Upates the UI every 5 sec., Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
     let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     /*
@@ -62,6 +70,7 @@ struct ContentView: View {
     // Initializes the various state variables
     // Source https://stackoverflow.com/questions/56691630/swiftui-state-var-initialization-issue
     init () {
+        var pageNbr: Int8
         var isBurmiOn: Bool
         var isTrackPlaying: Bool
         var isShuffle: Bool
@@ -72,6 +81,7 @@ struct ContentView: View {
         var artist: String
         var coverURL: String
         player = "Linionik Pipe Player" // CD
+        _PAGE_NBR = State(initialValue: 1)
         _PLAYER = State(initialValue: player)
         (isBurmiOn, track, artist, album, coverURL) = retrieveTrackInfo()
         _IS_BURMI_ON = State(initialValue: isBurmiOn)
@@ -87,168 +97,208 @@ struct ContentView: View {
     }
     
     var body: some View {
-        VStack {
-            HStack {
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        PLAYER = "Linionik Pipe Player"
-                        setPlayer(player: "Linionik Pipe Player")
-                        sleep(2)
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+        if PAGE_NBR == 1 {
+            VStack {
+                HStack {
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            PLAYER = "Linionik Pipe Player"
+                            setPlayer(player: "Linionik Pipe Player")
+                            sleep(2)
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
+                    })
+                    {
+                        Image(systemName: PLAYER == "Radio" ? "opticaldisc.fill" : "opticaldisc")
+                            .resizable()
+                            .frame(width: 68, height: 68)
                     }
-                })
-                {
-                    Image(PLAYER == "Linionik Pipe Player" ? "Player_CD_Active" : "Player_CD_InActive")
-                        .resizable()
-                        .frame(width: 68, height: 68)
-                }
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        PLAYER = "Radio"
-                        setPlayer(player: "Radio")
-                        sleep(1)
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            PLAYER = "Radio"
+                            setPlayer(player: "Radio")
+                            sleep(1)
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
+                    })
+                    {
+                        Image(systemName: PLAYER == "Radio" ? "radio.fill" : "radio")
+                            .resizable()
+                            .frame(width: 68, height: 68)
                     }
-                })
-                {
-                    Image(PLAYER == "Radio" ? "Player_Radio_Active" : "Player_Radio_InActive")
-                        .resizable()
-                        .frame(width: 68, height: 68)
-                }
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        PLAYER = "WiMP Player"
-                        setPlayer(player: "WiMP Player")
-                        sleep(1)
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    }
-                }) {
-                    Image(PLAYER == "WiMP Player" ? "Player_Tidal_Active" : "Player_Tidal_InActive")
-                        .resizable()
-                        .frame(width: 68, height: 68)
-                }
-            }
-            Spacer()
-            HStack {
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        trackPrevious()
-                        // TODO Ralf. Geht das irgendwie besser
-                        sleep(1)
-                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    }
-                }) {
-                    Image(IS_BURMI_ON ? "Play_PreviousActive" : "Play_PreviousInActive")
-                        .resizable()
-                        .frame(width: 68, height: 68)
-                }
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        trackPlayOrPause(isTrackPlaying: !(IS_TRACK_PLAYING))
-                        sleep(1)
-                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    }
-                }) {
-                    Image(IS_BURMI_ON ? (IS_TRACK_PLAYING ? "Play_PauseActive" : "Play_PlayActive") : "Play_PlayInActive")
-                        .resizable()
-                        .frame(width: 68, height: 68)
-                }
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        trackStop()
-                        sleep(1)
-                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    }
-                }
-                    
-                ) {
-                    Image(IS_BURMI_ON ? "Play_StopActive" : "Play_StopInActive")
-                        .resizable()
-                        .frame(width: 68, height: 68)
-                }
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        trackNext()
-                        sleep(1)
-                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    }
-                }) {
-                    Image(IS_BURMI_ON ? "Play_NextActive" : "Play_NextInActive")
-                        .resizable()
-                        .frame(width: 68, height: 68)
-                }
-            }
-            HStack {
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
-                        //sleep(1)
-                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    }
-                }) {
-                    Image(IS_MODE_REPEAT ? "RepeatActive" : "RepeatInActive")
-                        .resizable()
-                        .frame(width: 34, height: 34)
-                }
-                Button(action: {
-                    if (IS_BURMI_ON) {
-                        toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
-                        //sleep(1)
-                        (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                        (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-                    }
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            PLAYER = "WiMP Player"
+                            setPlayer(player: "WiMP Player")
+                            sleep(1)
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
                     }) {
-                    Image(IS_MODE_SHUFFLE ? "ShuffleActive" : "ShuffleInActive")
-                        .resizable()
-                        .frame(width: 34, height: 34)
+                        Image(systemName: PLAYER == "WiMP Player" ? "icloud.and.arrow.down.fill" : "icloud.and.arrow.down")
+                            .resizable()
+                            .frame(width: 68, height: 68)
                     }
-            }
-            Spacer()
-            VStack{
-                AsyncImage(url: URL(string: ACTIVE_COVER_URL)){ result in
-                    result.image?
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 240, height: 240)
                 }
-                // TODO Ralf
-                .onTapGesture {print("Tapped on Image")}
-                // https://stackoverflow.com/questions/60885532/how-to-detect-swiping-up-down-left-and-right-with-swiftui-on-a-view
-                .gesture(DragGesture(minimumDistance: 3.0, coordinateSpace: .local)
-                    .onEnded { value in
-                        print(value.translation)
-                        switch(value.translation.width, value.translation.height) {
+                Spacer()
+                HStack {
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            trackPrevious()
+                            // TODO Ralf. Geht das irgendwie besser
+                            sleep(1)
+                            (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
+                    }) {
+                        Image(systemName: IS_BURMI_ON ? "backward.circle.fill" : "backward.circle")
+                            .resizable()
+                            .frame(width: 68, height: 68)
+                    }
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            trackPlayOrPause(isTrackPlaying: !(IS_TRACK_PLAYING))
+                            sleep(1)
+                            (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
+                    }) {
+                        Image(systemName: IS_BURMI_ON ? (IS_TRACK_PLAYING ? "pause" : "play.circle.fill") : "play.circle")
+                            .resizable()
+                            .frame(width: 68, height: 68)
+                    }
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            trackStop()
+                            sleep(1)
+                            (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
+                    }
+                           
+                    ) {
+                        Image(systemName: IS_BURMI_ON ? "stop.fill" : "stop")
+                            .resizable()
+                            .frame(width: 68, height: 68)
+                    }
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            trackNext()
+                            sleep(1)
+                            (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
+                    }) {
+                        Image(systemName: IS_BURMI_ON ? "forward.circle.fill" : "forward.circle")
+                            .resizable()
+                            .frame(width: 68, height: 68)
+                    }
+                }
+                HStack {
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
+                            (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
+                    }) {
+                        Image(systemName: IS_MODE_REPEAT ? "repeat.circle.fill" : "repeat.circle")
+                            .resizable()
+                            .frame(width: 34, height: 34)
+                    }
+                    Button(action: {
+                        if (IS_BURMI_ON) {
+                            toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
+                            (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        }
+                    }) {
+                        Image(systemName: IS_MODE_SHUFFLE ? "shuffle.circle.fill" : "shuffle.circle")
+                            .resizable()
+                            .frame(width: 34, height: 34)
+                    }
+                }
+                Spacer()
+                VStack{
+                    AsyncImage(url: URL(string: ACTIVE_COVER_URL)){ result in
+                        result.image?
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 240, height: 240)
+                    }
+                    // TODO Ralf
+                    .onTapGesture {print("Tapped on Image")}
+                    // https://stackoverflow.com/questions/60885532/how-to-detect-swiping-up-down-left-and-right-with-swiftui-on-a-view
+                    .gesture(DragGesture(minimumDistance: 3.0, coordinateSpace: .local)
+                        .onEnded { value in
+                            print(value.translation)
+                            switch(value.translation.width, value.translation.height) {
                             case (...0, -100...100):  trackNext()     // left swipre
                             case (0..., -100...10):  trackPrevious() // right swipe
                             case (-100...100, ...0):  print("up swipe")
                             case (-100...100, 0...):  print("down swipe")
                             default:  print("no clue")
+                            }
                         }
+                    )
+                }
+                Spacer()
+                VStack{
+                    Text(ACTIVE_TRACK)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(ACTIVE_ARTIST)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(ACTIVE_ALBUM)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                HStack {
+                    Button(action: {
+                        PAGE_NBR = 1
+                    }) {
+                        Image(systemName: (PAGE_NBR == 1) ? "1.circle.fill" : "1.circle")
+                            .resizable()
+                            .frame(width: 18, height: 18)
                     }
-                )
+                    Button(action: {
+                        PAGE_NBR = 2
+                    }) {
+                        Image(systemName: (PAGE_NBR == 2) ? "2.circle.fill" : "2.circle")
+                            .resizable()
+                            .frame(width: 18, height: 18)
+                    }
+                }
+            }.onReceive(timer, perform: { _ in
+                print("Self-Update")
+                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
+            })
+    }
+    if PAGE_NBR == 2 {
+        VStack {
+            Image(PLAYER == "WiMP Player" ? "Player_Tidal_Active" : "Player_Tidal_InActive")
+                .resizable()
+                .frame(width: 68, height: 68)
+            HStack {
+                Button(action: {
+                    PAGE_NBR = 1
+                }) {
+                    Image(systemName: (PAGE_NBR == 1) ? "1.circle.fill" : "1.circle")
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                }
+                Button(action: {
+                    PAGE_NBR = 2
+                }) {
+                    Image(systemName: (PAGE_NBR == 2) ? "2.circle.fill" : "2.circle")
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                }
             }
-            Spacer()
-            VStack{
-                Text(ACTIVE_TRACK)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text(ACTIVE_ARTIST)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text(ACTIVE_ALBUM)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }.onReceive(timer, perform: { _ in
-            print("Self-Update")
-            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-            (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-        })
+        }
+    }
     }
 }
 //
@@ -329,7 +379,8 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
     {
         // Radio
         title = (jsonSongInfo["Title"] as! String)
-        artist = "" // TODO Ralf können wir hier was anderes holen (jsonSongInfo["Artist"] as! String)
+        artist = (jsonSongDictionary["Album"] as! String)
+        artist = artist.replacingOccurrences(of:", " + (jsonSongDictionary["AudioInfo"] as! String), with:(""))
         album = "" // TODO Ralf können wir hier was anderes holen (jsonSongInfo["Album"] as! String)
         coverUrl = (jsonSongDictionary["Cover"] as! String)
     }
