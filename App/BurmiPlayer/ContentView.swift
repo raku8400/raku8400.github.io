@@ -84,6 +84,7 @@ struct ContentView: View {
         var album: String
         var artist: String
         var coverURL: String
+        var tracks: [Track]
         pageNbr = 1
         player = "Linionik Pipe Player" // CD
         _PAGE_NBR = State(initialValue: pageNbr)
@@ -99,13 +100,8 @@ struct ContentView: View {
         _IS_TRACK_PLAYING = State(initialValue: isTrackPlaying)
         _IS_MODE_SHUFFLE = State(initialValue: isShuffle)
         _IS_MODE_REPEAT = State(initialValue: isRepeat)
-        // TODO Make dynamic
-        _TRACKS = State(initialValue: [
-            Track(uniqueID: 0, title: "Titel 1", artist: "Artist 1", imageURL: "URL 1"),
-            Track(uniqueID: 1, title: "Titel 2", artist: "Artist 2", imageURL: "URL 1"),
-            Track(uniqueID: 2, title: "Titel 3", artist: "Artist 3", imageURL: "URL 1")
-        ])
-
+        tracks = retrieveTrackList(player: player)
+        _TRACKS = State(initialValue: tracks)
     }
     
     var body: some View {
@@ -270,14 +266,14 @@ struct ContentView: View {
                     Button(action: {
                         PAGE_NBR = 1
                     }) {
-                        Image(systemName: (PAGE_NBR == 1) ? "1.circle.fill" : "1.circle")
+                        Image(systemName: (PAGE_NBR == 1) ? "circle.fill" : "circle")
                             .resizable()
                             .frame(width: 18, height: 18)
                     }
                     Button(action: {
                         PAGE_NBR = 2
                     }) {
-                        Image(systemName: (PAGE_NBR == 2) ? "2.circle.fill" : "2.circle")
+                        Image(systemName: (PAGE_NBR == 2) ? "circle.fill" : "circle")
                             .resizable()
                             .frame(width: 18, height: 18)
                     }
@@ -294,7 +290,6 @@ struct ContentView: View {
             Text(PLAYER == "Radio" ? "Stations" : "Tracks").font(.headline)
             
             VStack {
-                
                 List(TRACKS, id: \.uniqueID) { track in
                     Text(track.title)
                 }
@@ -303,14 +298,14 @@ struct ContentView: View {
                 Button(action: {
                     PAGE_NBR = 1
                 }) {
-                    Image(systemName: (PAGE_NBR == 1) ? "1.circle.fill" : "1.circle")
+                    Image(systemName: (PAGE_NBR == 1) ? "circle.fill" : "circle")
                         .resizable()
                         .frame(width: 18, height: 18)
                 }
                 Button(action: {
                     PAGE_NBR = 2
                 }) {
-                    Image(systemName: (PAGE_NBR == 2) ? "2.circle.fill" : "2.circle")
+                    Image(systemName: (PAGE_NBR == 2) ? "circle.fill" : "circle")
                         .resizable()
                         .frame(width: 18, height: 18)
                 }
@@ -320,8 +315,10 @@ struct ContentView: View {
     }
 }
 //
-// Timeout in Milliseconds for normal operations
+// Timeout in Milliseconds for normal (quick) operations when communicating with Burmi
 let TIMEOUT_NORM_MS = 100
+// Timeout in Milliseconds for long (slow) operations when communicating with Burmi
+let TIMEOUT_LONG_MS = 5000
 //
 // IP under which the Burmi device is accessible
 let IP = "192.168.1.106"  // es war auch schon mal 115
@@ -334,9 +331,7 @@ let IP = "192.168.1.106"  // es war auch schon mal 115
 func setPlayer(player: String) {
     // TODO hier nicht den n'ten Song hartcodieren - moment hartcodiert 5 (wobei, woher weiss man den letzten Zustand
     let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  5 }}"
-    let resp = executeGetRequest(cmd: cmd)
-    print("aaa")
-    print(resp)
+    let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 
 
@@ -344,7 +339,7 @@ func setPlayer(player: String) {
 // Retrieves information about the current play mode
 func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : { \"AudioGetInfo\" : { \"Method\" : \"GetPlayState\"}}}"
-    let resp = executeGetRequest(cmd: cmd)
+    let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
     if (resp.count == 0) {
         // Burmi is off
         return (false, false, false, false)
@@ -363,7 +358,7 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
 // Retrieves information about the currently active track/station
 func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, album: String, coverUrl: String) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
-    let resp = executeGetRequest(cmd: cmd)
+    let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
     if (resp.count == 0) {
         // Burmi is off
         return (false, "", "", "", "")
@@ -377,66 +372,86 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
     var artist: String = ""
     var album: String = ""
     var coverUrl: String = ""
+    title = (jsonSongInfo["Title"] as! String)
+    coverUrl = (jsonSongDictionary["Cover"] as! String)
     if (resp["InputName"] as! String == "Linionik Pipe Player") {
         // CD
-        title = (jsonSongInfo["Title"] as! String)
         artist = (jsonSongInfo["Artist"] as! String)
         album = (jsonSongInfo["Album"] as! String)
-        coverUrl = (jsonSongDictionary["Cover"] as! String)
     } else if (resp["InputName"] as! String == "Radio") {
         // Radio
-        title = (jsonSongInfo["Title"] as! String)
         artist = (jsonSongDictionary["Album"] as! String)
         artist = artist.replacingOccurrences(of:", " + (jsonSongDictionary["AudioInfo"] as! String), with:(""))
-        album = "" // TODO Ralf können wir hier was anderes holen (jsonSongInfo["Album"] as! String)
-        coverUrl = (jsonSongDictionary["Cover"] as! String)
+        album = "" // TODO Ralf können wir hier was anderes holen??
     } else if (resp["InputName"] as! String == "WiMP Player") {
         // Tidal
-        title = (jsonSongInfo["Title"] as! String)
         artist = (jsonSongInfo["Artist"] as! String)
         album = (jsonSongInfo["Album"] as! String)
-        coverUrl = (jsonSongDictionary["Cover"] as! String)
     }
     // TODO Ralf Fehlerbehandlung unbekannter Player fehlt noch
     return (true, title, artist, album, coverUrl)
 }
 //
+// Retrieves Tracklist (List of tracks (or radio stations) in the currently active Track-List/StationList)
+// TODO Ralf: Wird beim Wechsel des Players noch nicht nachgeführt - vermutlich muss diese aus den Wechsel-Methoden heraus aufgerufen werden
+func retrieveTrackList(player: String) -> ([Track]) {
+    if (player.isEmpty) {
+        // Burmi off or no player active
+        return []
+    }
+    var cmd = "{\"Media_Obj\" : \"xxxx\", \"AudioPlayList\" : {\"Method\" : \"GetPlayList\"}}"
+    cmd = cmd.replacingOccurrences(of:"xxxx", with:player)
+    let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_LONG_MS)
+    let jsonPlayListElements = (resp["PlayList"] as? [Dictionary<String, AnyObject>])
+    var retValue: [Track] = []
+    for i in 0..<jsonPlayListElements!.count {
+        retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["Artist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+    }
+    return retValue
+    /*
+    return [
+        Track(uniqueID: "0", title: "Titel 1", artist: "Artist 1", imageURL: "URL 1"),
+        Track(uniqueID: "1", title: "Titel 2", artist: "Artist 2", imageURL: "URL 2")
+    ]*/
+}
+
+//
 // Starts or pauses playing of a currently active track
 func trackPlayOrPause(isTrackPlaying: Bool) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"" +  (isTrackPlaying ? "Play" : "Pause") + "\"}}}"
-    _ = executeGetRequest(cmd: cmd)
+    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Moves to the next played track
 func trackNext() {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"SkipForward\"}}}"
-    _ = executeGetRequest(cmd: cmd)
+    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Moves to the previous played track
 func trackPrevious() {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"BackForward\"}}}"
-    _ =  executeGetRequest(cmd: cmd)
+    _ =  executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Stops playing any track
 func trackStop() {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"Stop\"}}}"
-    _ = executeGetRequest(cmd: cmd)
+    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Toggles the repeat mode
 func toggleRepeat(isModeRepeat: Bool)  {
     var cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : {\"AudioControl\" : {\"Method\" : \"SetRepeat\", \"Parameters\" :  xxxx}}}"
     cmd = cmd.replacingOccurrences(of:"xxxx", with:(isModeRepeat ? "false" : "true"))
-    _ = executeGetRequest(cmd: cmd)
+    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Toggles the shuffle mode
 func toggleShuffle(isModeShuffle: Bool) {
     var cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : {\"AudioControl\" : {\"Method\" : \"SetShuffle\", \"Parameters\" :  xxxx}}}"
     cmd = cmd.replacingOccurrences(of:"xxxx", with:(isModeShuffle ? "false" : "true"))
-    _ = executeGetRequest(cmd: cmd)
+    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Encodes the given URL and returns the result
@@ -462,10 +477,10 @@ extension String {
         return hexBytes.joined()
     }
 }
-// TODO Ralf: Braucht es das jetzt wirklich noch, scheinbar schon, ist aber evtl. noch nicht genieal?
+// TODO Ralf: Das braucht es zwar, ist aber evtl. noch nicht genieal?
 // Source: https://stackoverflow.com/questions/26784315/can-i-somehow-do-a-synchronous-http-request-via-nsurlsession-in-swift
 extension URLSession {
-    func synchronousDataTask(urlrequest: URLRequest) -> (data: Data?, response: URLResponse?, error: Error?) {
+    func synchronousDataTask(urlrequest: URLRequest, timeout: Int) -> (data: Data?, response: URLResponse?, error: Error?) {
         var data: Data?
         var response: URLResponse?
         var error: Error?
@@ -480,14 +495,14 @@ extension URLSession {
             semaphore.signal()
         }
         dataTask.resume()
-        _ = semaphore.wait(timeout: DispatchTime.now() + DispatchTimeInterval.milliseconds(TIMEOUT_NORM_MS))
+        _ = semaphore.wait(timeout: DispatchTime.now() + DispatchTimeInterval.milliseconds(timeout))
 
         return (data, response, error)
     }
 }
 
 // TODO Document, noch etwas clean-up
-func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
+func executeGetRequest(cmd: String, timeout: Int) -> (Dictionary<String, AnyObject>) {
     let encodedCmd = getEncodedURL(url: cmd)
     let authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012"
     let authStringHash = authString.sha1()
@@ -500,21 +515,20 @@ func executeGetRequest(cmd: String) -> (Dictionary<String, AnyObject>) {
     var json = [String: AnyObject]()
     // Initialize HTTP Request
     var request = URLRequest(url: URL(string: urlString)!)
-    // print("URL:" + urlString)
     request.httpMethod = "GET"
-    let (data, _, error) = URLSession.shared.synchronousDataTask(urlrequest: request)
+    let (data, _, error) = URLSession.shared.synchronousDataTask(urlrequest: request, timeout: timeout)
     if let error = error {
         print("Synchronous task ended with error: \(error)")
     } else {
-        //print("Synchronous task ended without errors.")
-        if data != nil {
+      if data != nil {
             do {
                 json = try JSONSerialization.jsonObject(with: data!) as! Dictionary<String, AnyObject>
                 
             } catch {
-                print("error")
+                print("error, kann JSON Data nicht konvertieren")
             }
-        }
+        } else{
+            print("error, keine Daten erhalten")}
     }
     return json
 }
@@ -525,11 +539,11 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 
-// TODO Document
+// Data Structure for a track in the track list
+// TODO Ralf: könnte eigentlich auch für die Detailseite verwendet werden (anstatt einzelner Variablen wie artist)
 struct Track {
-    var uniqueID : Int
+    var uniqueID : String
     var title: String
     var artist: String
     var imageURL: String
 }
-
