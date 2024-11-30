@@ -24,13 +24,13 @@ struct ContentView: View {
     //
     // Page Nbr to be displayed
     //   1 = Player with active Track
-    //   2 = TrackList
+    //   2 = TrackList with Tracks/Stations
     @State var PAGE_NBR: Int8
     // True if Burmi is online, otherwise False
     @State var IS_BURMI_ON: Bool
     // Name of the player: "Radio" for Radio, "Linionik Pipe Player" for CD and "WiMP Player" for TIDAL
     @State var PLAYER: String
-    // True if currently a song is being played (irrespective of the play mode cd, tidal etc), otherwise False
+    // True if currently a track is being played (irrespective of the play mode cd, tidal etc), otherwise False
     @State var IS_TRACK_PLAYING: Bool
     // True if player is currently in shuffle mode
     @State var IS_MODE_SHUFFLE: Bool
@@ -44,11 +44,15 @@ struct ContentView: View {
     @State var ACTIVE_ALBUM: String
     // URL for cover info for the currently active track
     @State var ACTIVE_COVER_URL: String
-    // Upates the UI every 5 sec., Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
-    let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    // List of tracks / stations in the active playlist
+    @State var TRACKS: [Track]
+    // Upates the UI every 3 sec., Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
+    let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
     /*
     // TODO Ralf
+    // Das Player Icon (CD etc.) wird initial nicht nachgeführt
+    // Die Icons müsste es noch in einer ausgegraut Version (inactive) geben (für Burmi Off/No Player)
     // Create a swipe gesture recognizer
     let swipeGesture = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
 
@@ -80,8 +84,9 @@ struct ContentView: View {
         var album: String
         var artist: String
         var coverURL: String
+        pageNbr = 1
         player = "Linionik Pipe Player" // CD
-        _PAGE_NBR = State(initialValue: 1)
+        _PAGE_NBR = State(initialValue: pageNbr)
         _PLAYER = State(initialValue: player)
         (isBurmiOn, track, artist, album, coverURL) = retrieveTrackInfo()
         _IS_BURMI_ON = State(initialValue: isBurmiOn)
@@ -94,10 +99,18 @@ struct ContentView: View {
         _IS_TRACK_PLAYING = State(initialValue: isTrackPlaying)
         _IS_MODE_SHUFFLE = State(initialValue: isShuffle)
         _IS_MODE_REPEAT = State(initialValue: isRepeat)
+        // TODO Make dynamic
+        _TRACKS = State(initialValue: [
+            Track(uniqueID: 0, title: "Titel 1", artist: "Artist 1", imageURL: "URL 1"),
+            Track(uniqueID: 1, title: "Titel 2", artist: "Artist 2", imageURL: "URL 1"),
+            Track(uniqueID: 2, title: "Titel 3", artist: "Artist 3", imageURL: "URL 1")
+        ])
+
     }
     
     var body: some View {
         if PAGE_NBR == 1 {
+            // Page Nbr 1 - Track Details
             VStack {
                 HStack {
                     Button(action: {
@@ -109,7 +122,7 @@ struct ContentView: View {
                         }
                     })
                     {
-                        Image(systemName: PLAYER == "Radio" ? "opticaldisc.fill" : "opticaldisc")
+                        Image(systemName: PLAYER == "Linionik Pipe Player" ? "opticaldisc.fill" : "opticaldisc")
                             .resizable()
                             .frame(width: 68, height: 68)
                     }
@@ -162,7 +175,7 @@ struct ContentView: View {
                             (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                         }
                     }) {
-                        Image(systemName: IS_BURMI_ON ? (IS_TRACK_PLAYING ? "pause" : "play.circle.fill") : "play.circle")
+                        Image(systemName: IS_BURMI_ON ? (IS_TRACK_PLAYING ? "pause.circle" : "play.circle.fill") : "play.circle")
                             .resizable()
                             .frame(width: 68, height: 68)
                     }
@@ -174,9 +187,8 @@ struct ContentView: View {
                             (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                         }
                     }
-                           
                     ) {
-                        Image(systemName: IS_BURMI_ON ? "stop.fill" : "stop")
+                        Image(systemName: IS_BURMI_ON ? "stop.circle.fill" : "stop.circle")
                             .resizable()
                             .frame(width: 68, height: 68)
                     }
@@ -275,12 +287,18 @@ struct ContentView: View {
                 (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                 (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
             })
-    }
-    if PAGE_NBR == 2 {
-        VStack {
-            Image(PLAYER == "WiMP Player" ? "Player_Tidal_Active" : "Player_Tidal_InActive")
-                .resizable()
-                .frame(width: 68, height: 68)
+            // END Page Nbr 1
+        }
+        if PAGE_NBR == 2 {
+            // PAGE Nbr 2 - Track List
+            Text(PLAYER == "Radio" ? "Stations" : "Tracks").font(.headline)
+            
+            VStack {
+                
+                List(TRACKS, id: \.uniqueID) { track in
+                    Text(track.title)
+                }
+            }
             HStack {
                 Button(action: {
                     PAGE_NBR = 1
@@ -297,15 +315,15 @@ struct ContentView: View {
                         .frame(width: 18, height: 18)
                 }
             }
+            // END Page Nbr 2
         }
-    }
     }
 }
 //
 // Timeout in Milliseconds for normal operations
 let TIMEOUT_NORM_MS = 100
 //
-
+// IP under which the Burmi device is accessible
 let IP = "192.168.1.106"  // es war auch schon mal 115
 //let IP = "musiccenter151.local" -> gibt nur die HTML Seite zurück, aber keine Info über die IP Adresse
 
@@ -322,9 +340,8 @@ func setPlayer(player: String) {
 }
 
 
-    
+//
 // Retrieves information about the current play mode
-// TODO Ralf Player noch ergänzen (Radio/CD/Tidal/NONE) - oder evtl. gar nicht mehr nötig?
 func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : { \"AudioGetInfo\" : { \"Method\" : \"GetPlayState\"}}}"
     let resp = executeGetRequest(cmd: cmd)
@@ -334,30 +351,23 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
     } else if (resp["Media_Obj"] as! String == "DefaultZeroPlayer") {
         // Burmi is on, but no player is active
         return (true, false, false, false)
-    }
-    if (resp["Media_Obj"] as! String == "Radio")
-    {
-        // Radio does not offer Shuffle/Repeat
+    } else if (resp["Media_Obj"] as! String == "Radio") {
+        // Radio is active, Radio does not offer Shuffle/Repeat
         return (true, (resp["PlayState"] as! String == "Play"), false, false)
     } else {
+        // CD/Tidal is Active
         return (true, (resp["PlayState"] as! String == "Play"), (resp["Shuffle"] as! Bool), (resp["Repeat"] as! Bool))
     }
-    /*
-     Beispiel-Antwort
-     {"BufferLevel":100,"EffectFilter":-1,"InputName":"Linionik Pipe Player","Media_Obj":"Linionik Pipe Player","PlayState":"Play","Repeat":false,"Result":["OK"],"Shuffle":false}
-     */
 }
 //
-// Retrieves information about the currently active track
+// Retrieves information about the currently active track/station
 func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, album: String, coverUrl: String) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
     let resp = executeGetRequest(cmd: cmd)
-    if (resp.count == 0)
-    {
+    if (resp.count == 0) {
         // Burmi is off
         return (false, "", "", "", "")
-    } else if (resp["Media_Obj"] as! String == "DefaultZeroPlayer")
-    {
+    } else if (resp["Media_Obj"] as! String == "DefaultZeroPlayer") {
         // Burmi is on, but no player is active
         return (true, "", "", "", "")
     }
@@ -367,33 +377,28 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
     var artist: String = ""
     var album: String = ""
     var coverUrl: String = ""
-    if (resp["InputName"] as! String == "Linionik Pipe Player")
-    {
+    if (resp["InputName"] as! String == "Linionik Pipe Player") {
         // CD
         title = (jsonSongInfo["Title"] as! String)
         artist = (jsonSongInfo["Artist"] as! String)
         album = (jsonSongInfo["Album"] as! String)
         coverUrl = (jsonSongDictionary["Cover"] as! String)
-    }
-    if (resp["InputName"] as! String == "Radio")
-    {
+    } else if (resp["InputName"] as! String == "Radio") {
         // Radio
         title = (jsonSongInfo["Title"] as! String)
         artist = (jsonSongDictionary["Album"] as! String)
         artist = artist.replacingOccurrences(of:", " + (jsonSongDictionary["AudioInfo"] as! String), with:(""))
         album = "" // TODO Ralf können wir hier was anderes holen (jsonSongInfo["Album"] as! String)
         coverUrl = (jsonSongDictionary["Cover"] as! String)
-    }
-    if (resp["InputName"] as! String == "WiMP Player")
-    {
+    } else if (resp["InputName"] as! String == "WiMP Player") {
         // Tidal
         title = (jsonSongInfo["Title"] as! String)
         artist = (jsonSongInfo["Artist"] as! String)
         album = (jsonSongInfo["Album"] as! String)
         coverUrl = (jsonSongDictionary["Cover"] as! String)
     }
+    // TODO Ralf Fehlerbehandlung unbekannter Player fehlt noch
     return (true, title, artist, album, coverUrl)
-  
 }
 //
 // Starts or pauses playing of a currently active track
@@ -520,4 +525,11 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 
+// TODO Document
+struct Track {
+    var uniqueID : Int
+    var title: String
+    var artist: String
+    var imageURL: String
+}
 
