@@ -115,6 +115,7 @@ struct ContentView: View {
                             setPlayer(player: "Linionik Pipe Player")
                             sleep(2)
                             (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            TRACKS = retrieveTrackList(player: PLAYER)
                         }
                     })
                     {
@@ -128,6 +129,7 @@ struct ContentView: View {
                             setPlayer(player: "Radio")
                             sleep(1)
                             (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            TRACKS = retrieveTrackList(player: PLAYER)
                         }
                     })
                     {
@@ -141,6 +143,7 @@ struct ContentView: View {
                             setPlayer(player: "WiMP Player")
                             sleep(1)
                             (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            TRACKS = retrieveTrackList(player: PLAYER)
                         }
                     }) {
                         Image(systemName: PLAYER == "WiMP Player" ? "icloud.and.arrow.down.fill" : "icloud.and.arrow.down")
@@ -374,9 +377,9 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
     var coverUrl: String = ""
     title = (jsonSongInfo["Title"] as! String)
     coverUrl = (jsonSongDictionary["Cover"] as! String)
+    artist = (jsonSongInfo["Artist"] as! String)
     if (resp["InputName"] as! String == "Linionik Pipe Player") {
         // CD
-        artist = (jsonSongInfo["Artist"] as! String)
         album = (jsonSongInfo["Album"] as! String)
     } else if (resp["InputName"] as! String == "Radio") {
         // Radio
@@ -385,7 +388,6 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
         album = "" // TODO Ralf können wir hier was anderes holen??
     } else if (resp["InputName"] as! String == "WiMP Player") {
         // Tidal
-        artist = (jsonSongInfo["Artist"] as! String)
         album = (jsonSongInfo["Album"] as! String)
     }
     // TODO Ralf Fehlerbehandlung unbekannter Player fehlt noch
@@ -405,7 +407,15 @@ func retrieveTrackList(player: String) -> ([Track]) {
     let jsonPlayListElements = (resp["PlayList"] as? [Dictionary<String, AnyObject>])
     var retValue: [Track] = []
     for i in 0..<jsonPlayListElements!.count {
-        retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["Artist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+        if (player == "Radio") {
+            var artist = (jsonPlayListElements![i]["Album"] as! String)
+            artist = artist.replacingOccurrences(of:", " + (jsonPlayListElements![i]["AudioInfo"] as! String), with:(""))
+            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, title: artist, artist: jsonPlayListElements![i]["Genre"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+        } else  {
+            // CD / Tidal
+            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["Artist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+        }
+        
     }
     return retValue
     /*
@@ -511,6 +521,7 @@ func executeGetRequest(cmd: String, timeout: Int) -> (Dictionary<String, AnyObje
     // Suffix of URL (part directly before the param)
     let URL_SUF = "_[MC_JSON]_"
     let urlString = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
+    print("urlString: " + urlString)
     // Initialize return value
     var json = [String: AnyObject]()
     // Initialize HTTP Request
