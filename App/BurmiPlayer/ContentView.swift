@@ -8,13 +8,13 @@ import CommonCrypto;
 import UIKit;
 
 /* TODO
- * Playlist ->         cmd = '{"Media_Obj" : "Radio", "AudioPlayList" : {"Method" : "GetPlayList"}}'; (vermutlich erster Wert anpassen
+ * Wenn der ActivePlayer von "extern" geändert wird, kriegt das die App nich tmit
  * Bessere System Images: https://stackoverflow.com/questions/56514998/find-all-available-images-for-imagesystemname
  * Wiki Links adden
  * Evtl. Edit Song/Genre Detail Page wie hier https://bugfender.com/blog/swiftui-lists/
  * Evtl. Swipe-Geste auf Track Image zum Forward-Next/Prev -> ist begonnen
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
- * Die ganze Playlist Geschichte fehlt noch
+ * Die ganze Playlist Edit Geschichte fehlt noch
  * Eine vernünftige Suche nach Songs etc. wäre cool
  * Auf der ActiveTrack-Seite: Was wäre das Resultat von Swipe Up/Down
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
@@ -52,6 +52,7 @@ struct ContentView: View {
 
     /*
     // TODO Ralf
+    // In der Tracklist (Seite 2) noch den aktiv gespielten Track andersfarbig hinterlegen
     // Das Player Icon (CD etc.) wird initial nicht nachgeführt
     // Die Icons müsste es noch in einer ausgegraut Version (inactive) geben (für Burmi Off/No Player)
     // Create a swipe gesture recognizer
@@ -307,6 +308,10 @@ struct ContentView: View {
                                 .frame(width: 50, height: 50)
                         }
                     }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        playTrackIndex(player: PLAYER, trackIndex: track.counter)
+                    }
                 }
             }
             HStack {
@@ -346,8 +351,16 @@ let IP = "192.168.1.106"  // es war auch schon mal 115
 func setPlayer(player: String) {
     // TODO hier nicht den n'ten Song hartcodieren - moment hartcodiert 5 (wobei, woher weiss man den letzten Zustand
     let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  5 }}"
+    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+}
+
+
+func playTrackIndex(player: String, trackIndex: Int) {
+    let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  " + String(trackIndex) + " }}"
     let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
+
+
 
 
 //
@@ -421,10 +434,10 @@ func retrieveTrackList(player: String) -> ([Track]) {
         if (player == "Radio") {
             var artist = (jsonPlayListElements![i]["Album"] as! String)
             artist = artist.replacingOccurrences(of:", " + (jsonPlayListElements![i]["AudioInfo"] as! String), with:(""))
-            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, title: artist, artist: jsonPlayListElements![i]["Genre"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, counter: i, title: artist, artist: jsonPlayListElements![i]["Genre"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
         } else  {
             // CD / Tidal
-            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["Artist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, counter: i, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["Artist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
         }
         
     }
@@ -565,6 +578,7 @@ struct ContentView_Previews: PreviewProvider {
 // TODO Ralf: könnte eigentlich auch für die Detailseite verwendet werden (anstatt einzelner Variablen wie artist)
 struct Track {
     var uniqueID : String
+    var counter: Int    // Position of track in list (1 = topmost)
     var title: String
     var artist: String
     var imageURL: String
