@@ -11,6 +11,7 @@ import UIKit;
  * Playlist ->         cmd = '{"Media_Obj" : "Radio", "AudioPlayList" : {"Method" : "GetPlayList"}}'; (vermutlich erster Wert anpassen
  * Bessere System Images: https://stackoverflow.com/questions/56514998/find-all-available-images-for-imagesystemname
  * Wiki Links adden
+ * Evtl. Edit Song/Genre Detail Page wie hier https://bugfender.com/blog/swiftui-lists/
  * Evtl. Swipe-Geste auf Track Image zum Forward-Next/Prev -> ist begonnen
  * IP noch initial lesen. Im Python Code hat es evtl eine coole URL mit localhost/Burmi o.ä. (wobei der nicht funktioniert)
  * Die ganze Playlist Geschichte fehlt noch
@@ -291,10 +292,21 @@ struct ContentView: View {
         if PAGE_NBR == 2 {
             // PAGE Nbr 2 - Track List
             Text(PLAYER == "Radio" ? "Stations" : "Tracks").font(.headline)
-            
             VStack {
                 List(TRACKS, id: \.uniqueID) { track in
-                    Text(track.title)
+                    HStack {
+                        VStack(alignment: .leading) {
+                                Text(track.title).fontWeight(.bold)
+                                Text(track.artist)
+                        }
+                        Spacer()
+                        AsyncImage(url: URL(string: track.imageURL)){ result in
+                            result.image?
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 50, height: 50)
+                        }
+                    }
                 }
             }
             HStack {
@@ -395,7 +407,6 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
 }
 //
 // Retrieves Tracklist (List of tracks (or radio stations) in the currently active Track-List/StationList)
-// TODO Ralf: Wird beim Wechsel des Players noch nicht nachgeführt - vermutlich muss diese aus den Wechsel-Methoden heraus aufgerufen werden
 func retrieveTrackList(player: String) -> ([Track]) {
     if (player.isEmpty) {
         // Burmi off or no player active
@@ -521,7 +532,7 @@ func executeGetRequest(cmd: String, timeout: Int) -> (Dictionary<String, AnyObje
     // Suffix of URL (part directly before the param)
     let URL_SUF = "_[MC_JSON]_"
     let urlString = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
-    print("urlString: " + urlString)
+    //print("urlString: " + urlString)
     // Initialize return value
     var json = [String: AnyObject]()
     // Initialize HTTP Request
