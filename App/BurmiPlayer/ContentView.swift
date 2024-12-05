@@ -6,10 +6,14 @@
 import SwiftUI;
 import CommonCrypto;
 import UIKit;
+import SwiftSoup
 
 /* TODO
- * Wenn der ActivePlayer von "extern" geändert wird, kriegt das die App nich tmit
- * Bessere System Images: https://stackoverflow.com/questions/56514998/find-all-available-images-for-imagesystemname
+ * Wenn der ActivePlayer von "extern" geändert wird, kriegt das die App nicht mit
+ * Lyrics Page muss sich bei Song Wechsel noch selbst updaten, ebenso die Seite 2 mit der Playlist
+ * Lyrics Page textbox ist noch editierbar (aber evtl. Selektieren/Kopieren des Textes erlauben)
+ * Man müsste noch Links zu Band in Playlist etc. einbauen
+ * Genre?
  * Wiki Links adden
  * Evtl. Edit Song/Genre Detail Page wie hier https://bugfender.com/blog/swiftui-lists/
  * Evtl. Swipe-Geste auf Track Image zum Forward-Next/Prev -> ist begonnen
@@ -26,12 +30,17 @@ struct ContentView: View {
     // Page Nbr to be displayed
     //   1 = Player with active Track
     //   2 = TrackList with Tracks/Stations
+    //   3 = Lyrics
     @State var PAGE_NBR: Int8
     // True if Burmi is online, otherwise False
     @State var IS_BURMI_ON: Bool
-    // Name of the player: "Radio" for Radio, "Linionik Pipe Player" for CD and "WiMP Player" for TIDAL
+    // Name of the player:
+    //   "Radio"                -> Radio
+    //   "Linionik Pipe Player" -> CD
+    //   "WiMP Player"          -> TIDAL
     @State var PLAYER: String
-    // True if currently a track is being played (irrespective of the play mode cd, tidal etc), otherwise False
+    // True if currently a track is being played, otherwise False
+    // (irrespective of the play mode cd, tidal etc)
     @State var IS_TRACK_PLAYING: Bool
     // True if player is currently in shuffle mode
     @State var IS_MODE_SHUFFLE: Bool
@@ -47,11 +56,14 @@ struct ContentView: View {
     @State var ACTIVE_COVER_URL: String
     // List of tracks / stations in the active playlist
     @State var TRACKS: [Track]
+    // Lyrics of the currently played track
+    @State var LYRICS: String
     // Upates the UI every 3 sec., Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
     let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
     /*
     // TODO Ralf
+    // Lyrics wohl bei Radio disablen, Lyrics wird bei Songwechsel nicht nachgeführt
     // In der Tracklist (Seite 2) noch den aktiv gespielten Track andersfarbig hinterlegen
     // Das Player Icon (CD etc.) wird initial nicht nachgeführt
     // Die Icons müsste es noch in einer ausgegraut Version (inactive) geben (für Burmi Off/No Player)
@@ -87,8 +99,10 @@ struct ContentView: View {
         var artist: String
         var coverURL: String
         var tracks: [Track]
+        var lyrics: String
         pageNbr = 1
         player = "Linionik Pipe Player" // CD
+        lyrics =  ""
         _PAGE_NBR = State(initialValue: pageNbr)
         _PLAYER = State(initialValue: player)
         (isBurmiOn, track, artist, album, coverURL) = retrieveTrackInfo()
@@ -104,6 +118,7 @@ struct ContentView: View {
         _IS_MODE_REPEAT = State(initialValue: isRepeat)
         tracks = retrieveTrackList(player: player)
         _TRACKS = State(initialValue: tracks)
+        _LYRICS = State(initialValue: lyrics)
     }
     
     var body: some View {
@@ -282,6 +297,13 @@ struct ContentView: View {
                             .resizable()
                             .frame(width: 18, height: 18)
                     }
+                    Button(action: {
+                        PAGE_NBR = 3
+                    }) {
+                        Image(systemName: (PAGE_NBR == 3) ? "circle.fill" : "circle")
+                            .resizable()
+                            .frame(width: 18, height: 18)
+                    }
                 }
             }.onReceive(timer, perform: { _ in
                 print("Self-Update")
@@ -329,8 +351,51 @@ struct ContentView: View {
                         .resizable()
                         .frame(width: 18, height: 18)
                 }
+                Button(action: {
+                    PAGE_NBR = 3
+                }) {
+                    Image(systemName: (PAGE_NBR == 3) ? "circle.fill" : "circle")
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                }
             }
             // END Page Nbr 2
+        }
+        if PAGE_NBR == 3 {
+            // PAGE Nbr 3 - Lyrics
+            Text("Lyrics (powered by Genius.com)").font(.headline)
+            VStack {
+                //LYRICS =
+                TextField("Lyrics", text: $LYRICS, axis: .vertical).onAppear() {
+                    LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
+                  }
+                  .padding()
+                  .frame(maxHeight: .infinity)
+            }
+            HStack {
+                Button(action: {
+                    PAGE_NBR = 1
+                }) {
+                    Image(systemName: (PAGE_NBR == 1) ? "circle.fill" : "circle")
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                }
+                Button(action: {
+                    PAGE_NBR = 2
+                }) {
+                    Image(systemName: (PAGE_NBR == 2) ? "circle.fill" : "circle")
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                }
+                Button(action: {
+                    PAGE_NBR = 3
+                }) {
+                    Image(systemName: (PAGE_NBR == 3) ? "circle.fill" : "circle")
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                }
+            // END Page Nbr 3
+            }
         }
     }
 }
@@ -347,27 +412,22 @@ let IP = "192.168.1.106"  // es war auch schon mal 115
 
  
 // TODO Document
-    
 func setPlayer(player: String) {
     // TODO hier nicht den n'ten Song hartcodieren - moment hartcodiert 5 (wobei, woher weiss man den letzten Zustand
     let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  5 }}"
-    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
-
-
+//
+// Plays for the given player the given track
 func playTrackIndex(player: String, trackIndex: Int) {
     let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  " + String(trackIndex) + " }}"
-    let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
-
-
-
-
 //
 // Retrieves information about the current play mode
 func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: Bool, isRepeat: Bool) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : { \"AudioGetInfo\" : { \"Method\" : \"GetPlayState\"}}}"
-    let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    let resp = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
     if (resp.count == 0) {
         // Burmi is off
         return (false, false, false, false)
@@ -386,7 +446,7 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
 // Retrieves information about the currently active track/station
 func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, album: String, coverUrl: String) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
-    let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    let resp = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
     if (resp.count == 0) {
         // Burmi is off
         return (false, "", "", "", "")
@@ -427,7 +487,7 @@ func retrieveTrackList(player: String) -> ([Track]) {
     }
     var cmd = "{\"Media_Obj\" : \"xxxx\", \"AudioPlayList\" : {\"Method\" : \"GetPlayList\"}}"
     cmd = cmd.replacingOccurrences(of:"xxxx", with:player)
-    let resp = executeGetRequest(cmd: cmd, timeout: TIMEOUT_LONG_MS)
+    let resp = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_LONG_MS)
     let jsonPlayListElements = (resp["PlayList"] as? [Dictionary<String, AnyObject>])
     var retValue: [Track] = []
     for i in 0..<jsonPlayListElements!.count {
@@ -442,50 +502,76 @@ func retrieveTrackList(player: String) -> ([Track]) {
         
     }
     return retValue
-    /*
-    return [
-        Track(uniqueID: "0", title: "Titel 1", artist: "Artist 1", imageURL: "URL 1"),
-        Track(uniqueID: "1", title: "Titel 2", artist: "Artist 2", imageURL: "URL 2")
-    ]*/
 }
-
 //
 // Starts or pauses playing of a currently active track
 func trackPlayOrPause(isTrackPlaying: Bool) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"" +  (isTrackPlaying ? "Play" : "Pause") + "\"}}}"
-    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Moves to the next played track
 func trackNext() {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"SkipForward\"}}}"
-    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Moves to the previous played track
 func trackPrevious() {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"BackForward\"}}}"
-    _ =  executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    _ =  executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Stops playing any track
 func trackStop() {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioControl\" : {\"Method\" : \"Stop\"}}}"
-    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Toggles the repeat mode
 func toggleRepeat(isModeRepeat: Bool)  {
     var cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : {\"AudioControl\" : {\"Method\" : \"SetRepeat\", \"Parameters\" :  xxxx}}}"
     cmd = cmd.replacingOccurrences(of:"xxxx", with:(isModeRepeat ? "false" : "true"))
-    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Toggles the shuffle mode
 func toggleShuffle(isModeShuffle: Bool) {
     var cmd = "{\"Media_Obj\" : \"ActiveInput\", \"Method\" : \"ActiveInputCmd\", \"Parameters\" : {\"AudioControl\" : {\"Method\" : \"SetShuffle\", \"Parameters\" :  xxxx}}}"
     cmd = cmd.replacingOccurrences(of:"xxxx", with:(isModeShuffle ? "false" : "true"))
-    _ = executeGetRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+}
+//
+// Retrieves the lyrics of the given song from Genius, if it exists
+func retrieveLyrics(artist: String, title: String) -> String {
+    // Example: https://genius.com/Die-toten-hosen-hier-kommt-alex-lyrics
+    let artistUrl = artist.replacingOccurrences(of:" ", with:"-").lowercased()
+    let firstLetter = artistUrl.prefix(1).capitalized
+    let remainingLetters = artistUrl.dropFirst().lowercased()
+    let titleUrl = title.replacingOccurrences(of:" ", with:"-").lowercased()
+    let url = "https://genius.com/" + firstLetter + remainingLetters + "-" + titleUrl + "-lyrics"
+    let resp = executeGenericHttpRequest(url: url, timeout: TIMEOUT_NORM_MS)
+    print("url for lyrics: " + url  )
+    //print("lyrics: " + retValue  )
+    do {
+        let doc: Document = try SwiftSoup.parse(resp)
+        let lyrics = try doc.select("#lyrics-root > div:nth-child(2)")
+        var retValue = try lyrics.html().replacingOccurrences(of:"<br />", with:"\n")
+        // Remove all <SPAN>..</SPAN> tags, but not the values in between
+        retValue = retValue.replacingOccurrences(of:"<span[^>]*>", with:"", options: [.regularExpression])
+        retValue = retValue.replacingOccurrences(of:"</span>", with:"")
+        // Remove all <A>..</A> tags, but not the values in between
+        retValue = retValue.replacingOccurrences(of:"<a[^>]*>", with:"", options: [.regularExpression])
+        retValue = retValue.replacingOccurrences(of:"</a>", with:"")
+        // Remove all <I>..</I> tags, but not the values in between
+        retValue = retValue.replacingOccurrences(of:"<i[^>]*>", with:"", options: [.regularExpression])
+        retValue = retValue.replacingOccurrences(of:"</i>", with:"")
+        // Replace duplicate CRLF with single ones
+        retValue = retValue.replacingOccurrences(of:"\n\n", with:"\n")
+        return retValue
+    } catch {
+        return ""
+    }
 }
 //
 // Encodes the given URL and returns the result
@@ -498,7 +584,7 @@ func getEncodedURL(url: String) -> String {
     return retValue
 }
 //
-// Helper to create a SHA1 string
+// Helper to create a SHA1 string - needed for Burmi authorization
 // Source: https://stackoverflow.com/questions/25761344/how-to-hash-nsstring-with-sha1-in-swift
 extension String {
     func sha1() -> String {
@@ -535,8 +621,25 @@ extension URLSession {
     }
 }
 
+// TODO Ralf: Dies sollte die synchrone Extension nutzen
+func executeGenericHttpRequest(url: String, timeout: Int) -> (String) {
+    guard let myURL = URL(string: url) else {
+        print("Error: \(url) doesn't seem to be a valid URL")
+        return ""
+    }
+
+    do {
+        let myHTMLString = try String(contentsOf: myURL, encoding: .utf8)
+        //print("HTML : \(myHTMLString)")
+        return myHTMLString
+    } catch let error {
+        print("Error: \(error)")
+        return ""
+    }
+}
+
 // TODO Document, noch etwas clean-up
-func executeGetRequest(cmd: String, timeout: Int) -> (Dictionary<String, AnyObject>) {
+func executeBurmiHttpRequest(cmd: String, timeout: Int) -> (Dictionary<String, AnyObject>) {
     let encodedCmd = getEncodedURL(url: cmd)
     let authString = "Linionik_HTML5" + cmd + "#_Linionik_6_!HTML5!#_Linionik_2012"
     let authStringHash = authString.sha1()
