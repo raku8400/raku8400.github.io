@@ -9,9 +9,9 @@ import UIKit;
 import SwiftSoup
 
 /* TODO
+ * Sonderzeichen wie ! oder ' in Songtiteln beim getLyrics beachten (Roxette: Crash-boom-bang), da fehlen noch diverse
  * Wenn der ActivePlayer von "extern" geändert wird, kriegt das die App nicht mit
  * Lyrics Page muss sich bei Song Wechsel noch selbst updaten, ebenso die Seite 2 mit der Playlist
- * Lyrics Page textbox ist noch editierbar (aber evtl. Selektieren/Kopieren des Textes erlauben)
  * Man müsste noch Links zu Band in Playlist etc. einbauen
  * Genre?
  * Wiki Links adden
@@ -363,14 +363,16 @@ struct ContentView: View {
         }
         if PAGE_NBR == 3 {
             // PAGE Nbr 3 - Lyrics
-            Text("Lyrics (powered by Genius.com)").font(.headline)
+            Text("Lyrics   (by Genius.com)").font(.headline)
             VStack {
-                //LYRICS =
-                TextField("Lyrics", text: $LYRICS, axis: .vertical).onAppear() {
-                    LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
-                  }
-                  .padding()
-                  .frame(maxHeight: .infinity)
+                ScrollView {
+                    Text(LYRICS).onAppear() {
+                        LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
+                    }
+                    .textSelection(.enabled)
+                    .padding()
+                    .frame(maxHeight: .infinity)
+                }
             }
             HStack {
                 Button(action: {
@@ -497,7 +499,7 @@ func retrieveTrackList(player: String) -> ([Track]) {
             retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, counter: i, title: artist, artist: jsonPlayListElements![i]["Genre"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
         } else  {
             // CD / Tidal
-            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, counter: i, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["Artist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, counter: i, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["TrackArtist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
         }
         
     }
@@ -545,10 +547,13 @@ func toggleShuffle(isModeShuffle: Bool) {
 // Retrieves the lyrics of the given song from Genius, if it exists
 func retrieveLyrics(artist: String, title: String) -> String {
     // Example: https://genius.com/Die-toten-hosen-hier-kommt-alex-lyrics
-    let artistUrl = artist.replacingOccurrences(of:" ", with:"-").lowercased()
+    var artistUrl = artist.replacingOccurrences(of:" ", with:"-").lowercased()
+    artistUrl = artistUrl.replacingOccurrences(of:" + ", with:"-").lowercased()
+    artistUrl = artistUrl.replacingOccurrences(of:".']", with:"", options: [.regularExpression])
     let firstLetter = artistUrl.prefix(1).capitalized
     let remainingLetters = artistUrl.dropFirst().lowercased()
-    let titleUrl = title.replacingOccurrences(of:" ", with:"-").lowercased()
+    var titleUrl = title.replacingOccurrences(of:" ", with:"-").lowercased()
+    titleUrl = titleUrl.replacingOccurrences(of:"[!+.']", with:"", options: [.regularExpression])
     let url = "https://genius.com/" + firstLetter + remainingLetters + "-" + titleUrl + "-lyrics"
     let resp = executeGenericHttpRequest(url: url, timeout: TIMEOUT_NORM_MS)
     print("url for lyrics: " + url  )
@@ -566,6 +571,15 @@ func retrieveLyrics(artist: String, title: String) -> String {
         // Remove all <I>..</I> tags, but not the values in between
         retValue = retValue.replacingOccurrences(of:"<i[^>]*>", with:"", options: [.regularExpression])
         retValue = retValue.replacingOccurrences(of:"</i>", with:"")
+        // Remove all <DIV>..</DIV> tags, but not the values in between
+        retValue = retValue.replacingOccurrences(of:"<div[^>]*>", with:"", options: [.regularExpression])
+        retValue = retValue.replacingOccurrences(of:"</div>", with:"")
+        // Remove all <SVG>..</SVG> tags, but not the values in between
+        retValue = retValue.replacingOccurrences(of:"<svg[^>]*>", with:"", options: [.regularExpression])
+        retValue = retValue.replacingOccurrences(of:"</svg>", with:"")
+        // Remove all <PATH>..</PATH> tags, but not the values in between
+        retValue = retValue.replacingOccurrences(of:"<path[^>]*>", with:"", options: [.regularExpression])
+        retValue = retValue.replacingOccurrences(of:"</path>", with:"")
         // Replace duplicate CRLF with single ones
         retValue = retValue.replacingOccurrences(of:"\n\n", with:"\n")
         return retValue
