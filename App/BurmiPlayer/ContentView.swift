@@ -549,7 +549,7 @@ func retrieveLyrics(artist: String, title: String) -> String {
     // Example: https://genius.com/Die-toten-hosen-hier-kommt-alex-lyrics
     var artistUrl = artist.replacingOccurrences(of:" ", with:"-").lowercased()
     artistUrl = artistUrl.replacingOccurrences(of:" + ", with:"-").lowercased()
-    artistUrl = artistUrl.replacingOccurrences(of:".']", with:"", options: [.regularExpression])
+    artistUrl = artistUrl.replacingOccurrences(of:"[.'!]", with:"", options: [.regularExpression])
     let firstLetter = artistUrl.prefix(1).capitalized
     let remainingLetters = artistUrl.dropFirst().lowercased()
     var titleUrl = title.replacingOccurrences(of:" ", with:"-").lowercased()
@@ -560,8 +560,12 @@ func retrieveLyrics(artist: String, title: String) -> String {
     //print("lyrics: " + retValue  )
     do {
         let doc: Document = try SwiftSoup.parse(resp)
-        let lyrics = try doc.select("#lyrics-root > div:nth-child(2)")
-        var retValue = try lyrics.html().replacingOccurrences(of:"<br />", with:"\n")
+        var retValue = ""
+        let lyricContainers : Elements = try doc.select("div[data-lyrics-container=\"true\"]")
+        for lyricContainer in lyricContainers {
+            retValue = try retValue + lyricContainer.html()
+        }
+        retValue = retValue.replacingOccurrences(of:"<br />", with:"\n")
         // Remove all <SPAN>..</SPAN> tags, but not the values in between
         retValue = retValue.replacingOccurrences(of:"<span[^>]*>", with:"", options: [.regularExpression])
         retValue = retValue.replacingOccurrences(of:"</span>", with:"")
@@ -580,8 +584,10 @@ func retrieveLyrics(artist: String, title: String) -> String {
         // Remove all <PATH>..</PATH> tags, but not the values in between
         retValue = retValue.replacingOccurrences(of:"<path[^>]*>", with:"", options: [.regularExpression])
         retValue = retValue.replacingOccurrences(of:"</path>", with:"")
-        // Replace duplicate CRLF with single ones
-        retValue = retValue.replacingOccurrences(of:"\n\n", with:"\n")
+        // Replace multiple CRLF with single ones
+        retValue = retValue.replacingOccurrences(of:"\n*\n", with:"\n", options: [.regularExpression])
+        // Add an empty line before headings
+        retValue = retValue.replacingOccurrences(of:"[", with:"\n[")
         return retValue
     } catch {
         return ""
