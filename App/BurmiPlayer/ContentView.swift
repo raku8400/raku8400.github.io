@@ -9,6 +9,8 @@ import UIKit;
 import SwiftSoup
 
 /* TODO
+ * Auf der Tracklist Seite braucht es noch die Non-Contextmenüs Save Tracklist as Playlist und Clear Tracklist
+ * Die List-spezifischen Commands auf den Tracklist-Elementen müssen noch für Radio und Tidal stimmen (müsste im Python eigentlich bereits gemacht worden sein)
  * Sonderzeichen wie ! oder ' in Songtiteln beim getLyrics beachten (Roxette: Crash-boom-bang), da fehlen noch diverse
  * Wenn der ActivePlayer von "extern" geändert wird, kriegt das die App nicht mit
  * Lyrics Page muss sich bei Song Wechsel noch selbst updaten, ebenso die Seite 2 mit der Playlist
@@ -306,7 +308,7 @@ struct ContentView: View {
                     }
                 }
             }.onReceive(timer, perform: { _ in
-                print("Self-Update")
+                print("Self-Update Page 1")
                 (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                 (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
             })
@@ -318,22 +320,55 @@ struct ContentView: View {
             VStack {
                 List(TRACKS, id: \.uniqueID) { track in
                     HStack {
-                        VStack(alignment: .leading) {
-                                Text(track.title).fontWeight(.bold)
-                                Text(track.artist)
-                        }
-                        Spacer()
                         AsyncImage(url: URL(string: track.imageURL)){ result in
                             result.image?
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 50, height: 50)
                         }
+                        .onTapGesture {
+                            playTrackIndex(player: PLAYER, trackIndex: track.counter)
+                        }
+                        Spacer()
+                        VStack(alignment: .leading) {
+                                Text(track.title)
+                                    .fontWeight(.bold)
+                                    .multilineTextAlignment(.leading)
+                                Text(track.artist)
+                                    .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .onTapGesture {
+                            playTrackIndex(player: PLAYER, trackIndex: track.counter)
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            TRACKS = retrieveTrackList(player: PLAYER)
+                            LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
+                        }
+                        Spacer()
+                        Menu("...") {
+                            Button("Top", systemImage: "arrow.up.to.line", action: {
+                                moveTrackTop(rowIndex: track.counter, player: PLAYER)
+                                TRACKS = retrieveTrackList(player: PLAYER)
+                                })
+                            Button("Up", systemImage: "arrow.up", action: {
+                                moveTrackUp(rowIndex: track.counter, player: PLAYER)
+                                TRACKS = retrieveTrackList(player: PLAYER)
+                                })
+                            Button("Remove", systemImage: "trash", action: {
+                                removeTrack(rowIndex: track.counter, player: PLAYER)
+                                TRACKS = retrieveTrackList(player: PLAYER)
+                                })
+                            Button("Down", systemImage: "arrow.down", action: {
+                                moveTrackDown(rowIndex: track.counter, nbrTracks: TRACKS.count, player: PLAYER)
+                                TRACKS = retrieveTrackList(player: PLAYER)
+                                })
+                            Button("Bottom", systemImage: "arrow.down.to.line", action: {
+                                moveTrackBottom(rowIndex: track.counter, nbrTracks: TRACKS.count, player: PLAYER)
+                                TRACKS = retrieveTrackList(player: PLAYER)
+                                })
+                        }
                     }
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        playTrackIndex(player: PLAYER, trackIndex: track.counter)
-                    }
                 }
             }
             HStack {
@@ -358,7 +393,10 @@ struct ContentView: View {
                         .resizable()
                         .frame(width: 18, height: 18)
                 }
-            }
+            }.onReceive(timer, perform: { _ in
+                print("Self-Update Page 2")
+                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+            })
             // END Page Nbr 2
         }
         if PAGE_NBR == 3 {
@@ -396,8 +434,12 @@ struct ContentView: View {
                         .resizable()
                         .frame(width: 18, height: 18)
                 }
+            }.onReceive(timer, perform: { _ in
+                print("Self-Update Page 3")
+                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
+            })
             // END Page Nbr 3
-            }
         }
     }
 }
@@ -544,6 +586,47 @@ func toggleShuffle(isModeShuffle: Bool) {
     _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
+// Moves the given track to the top of the tracklist
+func moveTrackTop(rowIndex: Int, player: String) {
+    moveTrack(rowIndexStart: rowIndex, rowIndexEnd: 0, player: player)
+}
+//
+// Moves the given track one element up
+func moveTrackUp(rowIndex: Int, player: String) {
+    if (rowIndex > 0) {
+        moveTrack(rowIndexStart: rowIndex, rowIndexEnd: rowIndex - 1, player: player)
+    }
+}
+//
+// Moves the given track one down
+func moveTrackDown(rowIndex: Int, nbrTracks: Int, player: String) {
+    if (rowIndex + 1 < nbrTracks) {
+        moveTrack(rowIndexStart: rowIndex, rowIndexEnd: rowIndex + 1, player: player)
+    }
+}
+//
+// Moves the given track to the bottom of the tracklist
+func moveTrackBottom(rowIndex: Int, nbrTracks: Int, player: String) {
+    moveTrack(rowIndexStart: rowIndex, rowIndexEnd: nbrTracks - 1, player: player)
+}
+//
+// Helper to move tracks within the tracklist
+func moveTrack(rowIndexStart: Int, rowIndexEnd: Int, player: String) {
+    // TODO Ralf Fehlt noch für Tidal und für Radio
+    var cmd = "{\"Media_Obj\" : \"zzzz\", \"AudioPlayList\" : {\"Method\" : \"MoveSong\", \"Parameters\" : {\"Source\" : xxxx, \"Destination\" : yyyy}}}"
+    cmd = cmd.replacingOccurrences(of:"xxxx", with:String(rowIndexStart))
+    cmd = cmd.replacingOccurrences(of:"yyyy", with:String(rowIndexEnd))
+    cmd = cmd.replacingOccurrences(of:"zzzz", with:player)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+}
+// Removes the given track from the tracklist
+func removeTrack(rowIndex: Int, player: String) {
+    var cmd = "{\"Media_Obj\" : \"zzzz\", \"AudioPlayList\" : {\"Method\" : \"RemoveSongs\", \"Parameters\" : [xxxx]}}"
+    cmd = cmd.replacingOccurrences(of:"xxxx", with:String(rowIndex))
+    cmd = cmd.replacingOccurrences(of:"zzzz", with:player)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+}
+//
 // Retrieves the lyrics of the given song from Genius, if it exists
 func retrieveLyrics(artist: String, title: String) -> String {
     // Example: https://genius.com/Die-toten-hosen-hier-kommt-alex-lyrics
@@ -557,7 +640,6 @@ func retrieveLyrics(artist: String, title: String) -> String {
     let url = "https://genius.com/" + firstLetter + remainingLetters + "-" + titleUrl + "-lyrics"
     let resp = executeGenericHttpRequest(url: url, timeout: TIMEOUT_NORM_MS)
     print("url for lyrics: " + url  )
-    //print("lyrics: " + retValue  )
     do {
         let doc: Document = try SwiftSoup.parse(resp)
         var retValue = ""
