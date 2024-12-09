@@ -12,6 +12,7 @@ import SwiftSoup
  * Auf der Tracklist Seite braucht es noch die Non-Contextmenüs Save Tracklist as Playlist und Clear Tracklist
  * Die List-spezifischen Commands auf den Tracklist-Elementen müssen noch für Radio und Tidal stimmen (müsste im Python eigentlich bereits gemacht worden sein)
  * Sonderzeichen wie ! oder ' in Songtiteln beim getLyrics beachten (Roxette: Crash-boom-bang), da fehlen noch diverse
+ ** Runde Klammern wie bei shine one your crazy diamond (part 1)
  * Wenn der ActivePlayer von "extern" geändert wird, kriegt das die App nicht mit
  * Lyrics Page muss sich bei Song Wechsel noch selbst updaten, ebenso die Seite 2 mit der Playlist
  * Man müsste noch Links zu Band in Playlist etc. einbauen
@@ -65,6 +66,7 @@ struct ContentView: View {
 
     /*
     // TODO Ralf
+    // Save und clear tracklist noch implementieren
     // Lyrics wohl bei Radio disablen, Lyrics wird bei Songwechsel nicht nachgeführt
     // In der Tracklist (Seite 2) noch den aktiv gespielten Track andersfarbig hinterlegen
     // Das Player Icon (CD etc.) wird initial nicht nachgeführt
@@ -140,7 +142,7 @@ struct ContentView: View {
                     {
                         Image(systemName: PLAYER == "Linionik Pipe Player" ? "opticaldisc.fill" : "opticaldisc")
                             .resizable()
-                            .frame(width: 68, height: 68)
+                            .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
                     }
                     Button(action: {
                         if (IS_BURMI_ON) {
@@ -154,7 +156,7 @@ struct ContentView: View {
                     {
                         Image(systemName: PLAYER == "Radio" ? "radio.fill" : "radio")
                             .resizable()
-                            .frame(width: 68, height: 68)
+                            .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
                     }
                     Button(action: {
                         if (IS_BURMI_ON) {
@@ -167,7 +169,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: PLAYER == "WiMP Player" ? "icloud.and.arrow.down.fill" : "icloud.and.arrow.down")
                             .resizable()
-                            .frame(width: 68, height: 68)
+                            .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
                     }
                 }
                 Spacer()
@@ -183,7 +185,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: IS_BURMI_ON ? "backward.circle.fill" : "backward.circle")
                             .resizable()
-                            .frame(width: 68, height: 68)
+                            .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
                     }
                     Button(action: {
                         if (IS_BURMI_ON) {
@@ -195,7 +197,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: IS_BURMI_ON ? (IS_TRACK_PLAYING ? "pause.circle" : "play.circle.fill") : "play.circle")
                             .resizable()
-                            .frame(width: 68, height: 68)
+                            .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
                     }
                     Button(action: {
                         if (IS_BURMI_ON) {
@@ -208,7 +210,7 @@ struct ContentView: View {
                     ) {
                         Image(systemName: IS_BURMI_ON ? "stop.circle.fill" : "stop.circle")
                             .resizable()
-                            .frame(width: 68, height: 68)
+                            .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
                     }
                     Button(action: {
                         if (IS_BURMI_ON) {
@@ -220,7 +222,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: IS_BURMI_ON ? "forward.circle.fill" : "forward.circle")
                             .resizable()
-                            .frame(width: 68, height: 68)
+                            .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
                     }
                 }
                 HStack {
@@ -233,7 +235,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: IS_MODE_REPEAT ? "repeat.circle.fill" : "repeat.circle")
                             .resizable()
-                            .frame(width: 34, height: 34)
+                            .frame(width: UIScreen.main.bounds.height / 40, height: UIScreen.main.bounds.height / 40)
                     }
                     Button(action: {
                         if (IS_BURMI_ON) {
@@ -244,7 +246,7 @@ struct ContentView: View {
                     }) {
                         Image(systemName: IS_MODE_SHUFFLE ? "shuffle.circle.fill" : "shuffle.circle")
                             .resizable()
-                            .frame(width: 34, height: 34)
+                            .frame(width: UIScreen.main.bounds.height / 40, height: UIScreen.main.bounds.height / 40)
                     }
                 }
                 Spacer()
@@ -253,7 +255,7 @@ struct ContentView: View {
                         result.image?
                             .resizable()
                             .scaledToFill()
-                            .frame(width: 240, height: 240)
+                            .frame(width: UIScreen.main.bounds.height / 4, height: UIScreen.main.bounds.height / 4)
                     }
                     // TODO Ralf
                     .onTapGesture {print("Tapped on Image")}
@@ -309,6 +311,8 @@ struct ContentView: View {
                 }
             }.onReceive(timer, perform: { _ in
                 print("Self-Update Page 1")
+                //print("bounds h:" + UIScreen.main.bounds.height.description)
+                //print("bounds w:" + UIScreen.main.bounds.width.description)
                 (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
                 (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
             })
@@ -316,7 +320,25 @@ struct ContentView: View {
         }
         if PAGE_NBR == 2 {
             // PAGE Nbr 2 - Track List
-            Text(PLAYER == "Radio" ? "Stations" : "Tracks").font(.headline)
+            HStack {
+                VStack {
+                    Text(PLAYER == "Radio" ? "Stations" : "Tracks").font(.headline).multilineTextAlignment(.center)
+                }.frame(maxWidth: .infinity, alignment: .center)
+                Menu("...") {
+                    Button("Save", systemImage: "square.and.arrow.down.fill", action: {
+                        print("Noch nicht implementiert")
+                        // TODO Ralf codieren
+                        //moveTrackTop(rowIndex: track.counter, player: PLAYER)
+                        //TRACKS = retrieveTrackList(player: PLAYER)
+                    })
+                    Button("Delete", systemImage: "trash", action: {
+                        print("Noch nicht implementiert")
+                           // TODO Ralf codieren
+                           //moveTrackUp(rowIndex: track.counter, player: PLAYER)
+                           //TRACKS = retrieveTrackList(player: PLAYER)
+                   })
+                }
+            }
             VStack {
                 List(TRACKS, id: \.uniqueID) { track in
                     HStack {
@@ -324,7 +346,7 @@ struct ContentView: View {
                             result.image?
                                 .resizable()
                                 .scaledToFill()
-                                .frame(width: 50, height: 50)
+                                .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
                         }
                         .onTapGesture {
                             playTrackIndex(player: PLAYER, trackIndex: track.counter)
@@ -349,23 +371,24 @@ struct ContentView: View {
                             Button("Top", systemImage: "arrow.up.to.line", action: {
                                 moveTrackTop(rowIndex: track.counter, player: PLAYER)
                                 TRACKS = retrieveTrackList(player: PLAYER)
-                                })
+                            })
                             Button("Up", systemImage: "arrow.up", action: {
                                 moveTrackUp(rowIndex: track.counter, player: PLAYER)
                                 TRACKS = retrieveTrackList(player: PLAYER)
-                                })
-                            Button("Remove", systemImage: "trash", action: {
-                                removeTrack(rowIndex: track.counter, player: PLAYER)
-                                TRACKS = retrieveTrackList(player: PLAYER)
-                                })
+                            })
                             Button("Down", systemImage: "arrow.down", action: {
                                 moveTrackDown(rowIndex: track.counter, nbrTracks: TRACKS.count, player: PLAYER)
                                 TRACKS = retrieveTrackList(player: PLAYER)
-                                })
+                            })
                             Button("Bottom", systemImage: "arrow.down.to.line", action: {
                                 moveTrackBottom(rowIndex: track.counter, nbrTracks: TRACKS.count, player: PLAYER)
                                 TRACKS = retrieveTrackList(player: PLAYER)
-                                })
+                            })
+                            Divider()
+                            Button("Remove", systemImage: "trash", action: {
+                                removeTrack(rowIndex: track.counter, player: PLAYER)
+                                TRACKS = retrieveTrackList(player: PLAYER)
+                            })
                         }
                     }
                     .contentShape(Rectangle())
@@ -630,7 +653,7 @@ func removeTrack(rowIndex: Int, player: String) {
 // Retrieves the lyrics of the given song from Genius, if it exists
 func retrieveLyrics(artist: String, title: String) -> String {
     // Example: https://genius.com/Die-toten-hosen-hier-kommt-alex-lyrics
-    var artistUrl = artist.replacingOccurrences(of:" ", with:"-").lowercased()
+    var artistUrl = artist.replacingOccurrences(of:"[ /]", with:"-", options: [.regularExpression]).lowercased()
     artistUrl = artistUrl.replacingOccurrences(of:" + ", with:"-").lowercased()
     artistUrl = artistUrl.replacingOccurrences(of:"[.'!]", with:"", options: [.regularExpression])
     let firstLetter = artistUrl.prefix(1).capitalized
