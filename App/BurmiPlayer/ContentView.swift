@@ -9,7 +9,7 @@ import UIKit;
 import SwiftSoup
 
 /* TODO
- * Auf der Tracklist Seite braucht es noch die Non-Contextmenüs Save Tracklist as Playlist und Clear Tracklist
+ * Diverse Kontextmenüs sind nicht für alle PlayMode und Players anwendbar
  * Die List-spezifischen Commands auf den Tracklist-Elementen müssen noch für Radio und Tidal stimmen (müsste im Python eigentlich bereits gemacht worden sein)
  * Sonderzeichen wie ! oder ' in Songtiteln beim getLyrics beachten (Roxette: Crash-boom-bang), da fehlen noch diverse
  ** Runde Klammern wie bei shine one your crazy diamond (part 1)
@@ -61,12 +61,17 @@ struct ContentView: View {
     @State var TRACKS: [Track]
     // Lyrics of the currently played track
     @State var LYRICS: String
+    // PopUp for Playlist Name shown
+    @State private var SHOWPLAYLISTALERT = false
+    // Name of Playlist
+    @State private var PLAYLISTNAME = ""
     // Upates the UI every 3 sec., Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
     let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
     /*
     // TODO Ralf
-    // Save und clear tracklist noch implementieren
+     // List View sroll to: https://www.hackingwithswift.com/quick-start/swiftui/how-to-scroll-to-a-specific-row-in-a-list#:~:text=If%20you%20want%20to%20programmatically,and%20optionally%20also%20an%20anchor.
+     // aber wie highlighten
     // Lyrics wohl bei Radio disablen, Lyrics wird bei Songwechsel nicht nachgeführt
     // In der Tracklist (Seite 2) noch den aktiv gespielten Track andersfarbig hinterlegen
     // Das Player Icon (CD etc.) wird initial nicht nachgeführt
@@ -88,7 +93,7 @@ struct ContentView: View {
         }
     }
     */
-    
+    //
     // Initializes the various state variables
     // Source https://stackoverflow.com/questions/56691630/swiftui-state-var-initialization-issue
     init () {
@@ -325,20 +330,24 @@ struct ContentView: View {
                     Text(PLAYER == "Radio" ? "Stations" : "Tracks").font(.headline).multilineTextAlignment(.center)
                 }.frame(maxWidth: .infinity, alignment: .center)
                 Menu("...") {
-                    Button("Save", systemImage: "square.and.arrow.down.fill", action: {
-                        print("Noch nicht implementiert")
-                        // TODO Ralf codieren
-                        //moveTrackTop(rowIndex: track.counter, player: PLAYER)
-                        //TRACKS = retrieveTrackList(player: PLAYER)
-                    })
+                    Button("Save", systemImage: "square.and.arrow.down.fill") {
+                        SHOWPLAYLISTALERT.toggle()
+                    }
+                    Divider()
                     Button("Delete", systemImage: "trash", action: {
-                        print("Noch nicht implementiert")
-                           // TODO Ralf codieren
-                           //moveTrackUp(rowIndex: track.counter, player: PLAYER)
-                           //TRACKS = retrieveTrackList(player: PLAYER)
+                        removeAllTracks(player: PLAYER)
+                        TRACKS = retrieveTrackList(player: PLAYER)
                    })
                 }
+                Spacer()
             }
+            .alert("Save Tracks as Playlist", isPresented: $SHOWPLAYLISTALERT) {
+                TextField("Name of Playlist", text: $PLAYLISTNAME)
+                Button("OK", action: saveTracklistAsPlaylist)
+                Button("Cancel", role: .cancel) { }
+            } /*message: {
+                Text("Xcode will print whatever you type.")
+            }*/
             VStack {
                 List(TRACKS, id: \.uniqueID) { track in
                     HStack {
@@ -464,6 +473,10 @@ struct ContentView: View {
             })
             // END Page Nbr 3
         }
+    }
+    func saveTracklistAsPlaylist() {
+        print("You entered \(PLAYLISTNAME)")
+        removeAllTracks(playlistName: PLAYLISTNAME)
     }
 }
 //
@@ -642,12 +655,27 @@ func moveTrack(rowIndexStart: Int, rowIndexEnd: Int, player: String) {
     cmd = cmd.replacingOccurrences(of:"zzzz", with:player)
     _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
+//
 // Removes the given track from the tracklist
 func removeTrack(rowIndex: Int, player: String) {
     var cmd = "{\"Media_Obj\" : \"zzzz\", \"AudioPlayList\" : {\"Method\" : \"RemoveSongs\", \"Parameters\" : [xxxx]}}"
     cmd = cmd.replacingOccurrences(of:"xxxx", with:String(rowIndex))
     cmd = cmd.replacingOccurrences(of:"zzzz", with:player)
     _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+}
+//
+// Removes all tracks from the tracklist
+func removeAllTracks(player: String) {
+    var cmd = "{\"Media_Obj\" : \"zzzz\", \"AudioPlayList\" : {\"Method\" : \"RemoveAllSongs\"}}"
+    cmd = cmd.replacingOccurrences(of:"zzzz", with:player)
+    _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
+}
+//
+// Saves Tracklist as playlist
+func removeAllTracks(playlistName: String) {
+    var cmd = "http://" + IP + "/gen_playlist.php?action=new&name=xxxx"
+    cmd = cmd.replacingOccurrences(of:"xxxx", with:playlistName)
+    _ = executeGenericHttpRequest(url: cmd, timeout: TIMEOUT_NORM_MS) // # 300 DUPLICATE can be ok here
 }
 //
 // Retrieves the lyrics of the given song from Genius, if it exists
