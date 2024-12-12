@@ -27,7 +27,6 @@ import SwiftSoup
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
 */
 
-
 struct ContentView: View {
     //
     // Page Nbr to be displayed
@@ -57,6 +56,8 @@ struct ContentView: View {
     @State var ACTIVE_ALBUM: String
     // URL for cover info for the currently active track
     @State var ACTIVE_COVER_URL: String
+    // 0 based position of active track in tracklist (0 = topmost/first)
+    @State var ACTIVE_TRACK_INDEX: Int
     // List of tracks / stations in the active playlist
     @State var TRACKS: [Track]
     // Lyrics of the currently played track
@@ -70,8 +71,6 @@ struct ContentView: View {
 
     /*
     // TODO Ralf
-     // List View sroll to: https://www.hackingwithswift.com/quick-start/swiftui/how-to-scroll-to-a-specific-row-in-a-list#:~:text=If%20you%20want%20to%20programmatically,and%20optionally%20also%20an%20anchor.
-     // aber wie highlighten
     // Lyrics wohl bei Radio disablen, Lyrics wird bei Songwechsel nicht nachgeführt
     // In der Tracklist (Seite 2) noch den aktiv gespielten Track andersfarbig hinterlegen
     // Das Player Icon (CD etc.) wird initial nicht nachgeführt
@@ -109,17 +108,19 @@ struct ContentView: View {
         var coverURL: String
         var tracks: [Track]
         var lyrics: String
+        var activeTrackIndex: Int
         pageNbr = 1
         player = "Linionik Pipe Player" // CD
         lyrics =  ""
         _PAGE_NBR = State(initialValue: pageNbr)
         _PLAYER = State(initialValue: player)
-        (isBurmiOn, track, artist, album, coverURL) = retrieveTrackInfo()
+        (isBurmiOn, track, artist, album, coverURL, activeTrackIndex) = retrieveTrackInfo()
         _IS_BURMI_ON = State(initialValue: isBurmiOn)
         _ACTIVE_TRACK = State(initialValue: track)
         _ACTIVE_ARTIST = State(initialValue: artist)
         _ACTIVE_ALBUM = State(initialValue: album)
         _ACTIVE_COVER_URL = State(initialValue: coverURL)
+        _ACTIVE_TRACK_INDEX = State(initialValue: activeTrackIndex)
         (isBurmiOn, isTrackPlaying, isShuffle, isRepeat) = retrievePlayerInfo()
         _IS_BURMI_ON = State(initialValue: isBurmiOn)
         _IS_TRACK_PLAYING = State(initialValue: isTrackPlaying)
@@ -128,6 +129,7 @@ struct ContentView: View {
         tracks = retrieveTrackList(player: player)
         _TRACKS = State(initialValue: tracks)
         _LYRICS = State(initialValue: lyrics)
+        
     }
     
     var body: some View {
@@ -140,7 +142,7 @@ struct ContentView: View {
                             PLAYER = "Linionik Pipe Player"
                             setPlayer(player: "Linionik Pipe Player")
                             sleep(2)
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                             TRACKS = retrieveTrackList(player: PLAYER)
                         }
                     })
@@ -154,7 +156,7 @@ struct ContentView: View {
                             PLAYER = "Radio"
                             setPlayer(player: "Radio")
                             sleep(1)
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                             TRACKS = retrieveTrackList(player: PLAYER)
                         }
                     })
@@ -168,7 +170,7 @@ struct ContentView: View {
                             PLAYER = "WiMP Player"
                             setPlayer(player: "WiMP Player")
                             sleep(1)
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                             TRACKS = retrieveTrackList(player: PLAYER)
                         }
                     }) {
@@ -185,7 +187,7 @@ struct ContentView: View {
                             // TODO Ralf. Geht das irgendwie besser
                             sleep(1)
                             (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                         }
                     }) {
                         Image(systemName: IS_BURMI_ON ? "backward.circle.fill" : "backward.circle")
@@ -197,7 +199,7 @@ struct ContentView: View {
                             trackPlayOrPause(isTrackPlaying: !(IS_TRACK_PLAYING))
                             sleep(1)
                             (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                         }
                     }) {
                         Image(systemName: IS_BURMI_ON ? (IS_TRACK_PLAYING ? "pause.circle" : "play.circle.fill") : "play.circle")
@@ -209,7 +211,7 @@ struct ContentView: View {
                             trackStop()
                             sleep(1)
                             (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                         }
                     }
                     ) {
@@ -222,7 +224,7 @@ struct ContentView: View {
                             trackNext()
                             sleep(1)
                             (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                         }
                     }) {
                         Image(systemName: IS_BURMI_ON ? "forward.circle.fill" : "forward.circle")
@@ -235,7 +237,7 @@ struct ContentView: View {
                         if (IS_BURMI_ON) {
                             toggleRepeat(isModeRepeat: IS_MODE_REPEAT)
                             (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                         }
                     }) {
                         Image(systemName: IS_MODE_REPEAT ? "repeat.circle.fill" : "repeat.circle")
@@ -246,7 +248,7 @@ struct ContentView: View {
                         if (IS_BURMI_ON) {
                             toggleShuffle(isModeShuffle: IS_MODE_SHUFFLE)
                             (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                         }
                     }) {
                         Image(systemName: IS_MODE_SHUFFLE ? "shuffle.circle.fill" : "shuffle.circle")
@@ -318,117 +320,124 @@ struct ContentView: View {
                 print("Self-Update Page 1")
                 //print("bounds h:" + UIScreen.main.bounds.height.description)
                 //print("bounds w:" + UIScreen.main.bounds.width.description)
-                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                 (IS_BURMI_ON, IS_TRACK_PLAYING, IS_MODE_SHUFFLE, IS_MODE_REPEAT) = retrievePlayerInfo()
             })
             // END Page Nbr 1
         }
         if PAGE_NBR == 2 {
             // PAGE Nbr 2 - Track List
-            HStack {
-                VStack {
-                    Text(PLAYER == "Radio" ? "Stations" : "Tracks").font(.headline).multilineTextAlignment(.center)
-                }.frame(maxWidth: .infinity, alignment: .center)
-                Menu("...") {
-                    Button("Save", systemImage: "square.and.arrow.down.fill") {
-                        SHOWPLAYLISTALERT.toggle()
-                    }
-                    Divider()
-                    Button("Delete", systemImage: "trash", action: {
-                        removeAllTracks(player: PLAYER)
-                        TRACKS = retrieveTrackList(player: PLAYER)
-                   })
-                }
-                Spacer()
-            }
-            .alert("Save Tracks as Playlist", isPresented: $SHOWPLAYLISTALERT) {
-                TextField("Name of Playlist", text: $PLAYLISTNAME)
-                Button("OK", action: saveTracklistAsPlaylist)
-                Button("Cancel", role: .cancel) { }
-            } /*message: {
-                Text("Xcode will print whatever you type.")
-            }*/
             VStack {
-                List(TRACKS, id: \.uniqueID) { track in
-                    HStack {
-                        AsyncImage(url: URL(string: track.imageURL)){ result in
-                            result.image?
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
+                HStack {
+                    VStack {
+                        Text(PLAYER == "Radio" ? "Stations" : "Tracks").font(.headline).multilineTextAlignment(.center)
+                    }.frame(maxWidth: .infinity, alignment: .center)
+                    Menu("...") {
+                        Button("Save", systemImage: "square.and.arrow.down.fill") {
+                            SHOWPLAYLISTALERT.toggle()
                         }
-                        .onTapGesture {
-                            playTrackIndex(player: PLAYER, trackIndex: track.counter)
-                        }
-                        Spacer()
-                        VStack(alignment: .leading) {
-                                Text(track.title)
-                                    .fontWeight(.bold)
-                                    .multilineTextAlignment(.leading)
-                                Text(track.artist)
-                                    .multilineTextAlignment(.leading)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .onTapGesture {
-                            playTrackIndex(player: PLAYER, trackIndex: track.counter)
-                            (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                        Divider()
+                        Button("Delete", systemImage: "trash", action: {
+                            removeAllTracks(player: PLAYER)
                             TRACKS = retrieveTrackList(player: PLAYER)
-                            LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
+                        })
+                    }
+                    Spacer()
+                }
+                .alert("Save Tracks as Playlist", isPresented: $SHOWPLAYLISTALERT) {
+                    TextField("Name of Playlist", text: $PLAYLISTNAME)
+                    Button("OK", action: saveTracklistAsPlaylist)
+                    Button("Cancel", role: .cancel) { }
+                }
+                ScrollViewReader { proxy in
+                    VStack {
+                        List(TRACKS, id: \.uniqueID) { track in
+                            HStack {
+                                AsyncImage(url: URL(string: track.imageURL)){ result in
+                                    result.image?
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
+                                }
+                                .onTapGesture {
+                                    playTrackIndex(player: PLAYER, trackIndex: track.positionInList)
+                                }
+                                Spacer()
+                                VStack(alignment: .leading) {
+                                    Text(track.title)
+                                        .fontWeight(.bold)
+                                        .multilineTextAlignment(.leading)
+                                    Text(track.artist)
+                                        .multilineTextAlignment(.leading)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .onTapGesture {
+                                    playTrackIndex(player: PLAYER, trackIndex: track.positionInList)
+                                    (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
+                                    TRACKS = retrieveTrackList(player: PLAYER)
+                                    LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
+                                }
+                                Spacer()
+                                Menu("...") {
+                                    Button("Top", systemImage: "arrow.up.to.line", action: {
+                                        moveTrackTop(rowIndex: track.positionInList, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                    Button("Up", systemImage: "arrow.up", action: {
+                                        moveTrackUp(rowIndex: track.positionInList, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                    Button("Down", systemImage: "arrow.down", action: {
+                                        moveTrackDown(rowIndex: track.positionInList, nbrTracks: TRACKS.count, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                    Button("Bottom", systemImage: "arrow.down.to.line", action: {
+                                        moveTrackBottom(rowIndex: track.positionInList, nbrTracks: TRACKS.count, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                    Divider()
+                                    Button("Remove", systemImage: "trash", action: {
+                                        removeTrack(rowIndex: track.positionInList, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                }
+                            }
+                            //.contentShape(Rectangle())
+                            .id(track.positionInList)
+                            .background(track.positionInList == ACTIVE_TRACK_INDEX ? Color.secondary : Color.clear)
+                        }.onReceive(timer, perform: { _ in
+                            //(IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
+                            //proxy.scrollTo(ACTIVE_TRACK_INDEX, anchor: .top)
+                        })
+                    }
+                    HStack {
+                        Button(action: {
+                            PAGE_NBR = 1
+                        }) {
+                            Image(systemName: (PAGE_NBR == 1) ? "circle.fill" : "circle")
+                                .resizable()
+                                .frame(width: 18, height: 18)
                         }
-                        Spacer()
-                        Menu("...") {
-                            Button("Top", systemImage: "arrow.up.to.line", action: {
-                                moveTrackTop(rowIndex: track.counter, player: PLAYER)
-                                TRACKS = retrieveTrackList(player: PLAYER)
-                            })
-                            Button("Up", systemImage: "arrow.up", action: {
-                                moveTrackUp(rowIndex: track.counter, player: PLAYER)
-                                TRACKS = retrieveTrackList(player: PLAYER)
-                            })
-                            Button("Down", systemImage: "arrow.down", action: {
-                                moveTrackDown(rowIndex: track.counter, nbrTracks: TRACKS.count, player: PLAYER)
-                                TRACKS = retrieveTrackList(player: PLAYER)
-                            })
-                            Button("Bottom", systemImage: "arrow.down.to.line", action: {
-                                moveTrackBottom(rowIndex: track.counter, nbrTracks: TRACKS.count, player: PLAYER)
-                                TRACKS = retrieveTrackList(player: PLAYER)
-                            })
-                            Divider()
-                            Button("Remove", systemImage: "trash", action: {
-                                removeTrack(rowIndex: track.counter, player: PLAYER)
-                                TRACKS = retrieveTrackList(player: PLAYER)
-                            })
+                        Button(action: {
+                            PAGE_NBR = 2
+                        }) {
+                            Image(systemName: (PAGE_NBR == 2) ? "circle.fill" : "circle")
+                                .resizable()
+                                .frame(width: 18, height: 18)
+                        }
+                        Button(action: {
+                            PAGE_NBR = 3
+                        }) {
+                            Image(systemName: (PAGE_NBR == 3) ? "circle.fill" : "circle")
+                                .resizable()
+                                .frame(width: 18, height: 18)
                         }
                     }
-                    .contentShape(Rectangle())
-                }
+                }.onReceive(timer, perform: { _ in
+                    print("Self-Update Page 2")
+                    (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
+                })
             }
-            HStack {
-                Button(action: {
-                    PAGE_NBR = 1
-                }) {
-                    Image(systemName: (PAGE_NBR == 1) ? "circle.fill" : "circle")
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                }
-                Button(action: {
-                    PAGE_NBR = 2
-                }) {
-                    Image(systemName: (PAGE_NBR == 2) ? "circle.fill" : "circle")
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                }
-                Button(action: {
-                    PAGE_NBR = 3
-                }) {
-                    Image(systemName: (PAGE_NBR == 3) ? "circle.fill" : "circle")
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                }
-            }.onReceive(timer, perform: { _ in
-                print("Self-Update Page 2")
-                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
-            })
             // END Page Nbr 2
         }
         if PAGE_NBR == 3 {
@@ -468,7 +477,7 @@ struct ContentView: View {
                 }
             }.onReceive(timer, perform: { _ in
                 print("Self-Update Page 3")
-                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL) = retrieveTrackInfo()
+                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                 LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
             })
             // END Page Nbr 3
@@ -498,7 +507,7 @@ func setPlayer(player: String) {
     _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
-// Plays for the given player the given track
+// Plays for the given player the given track (playTrackIndex is expected to be 0-based, 0 = topmost)
 func playTrackIndex(player: String, trackIndex: Int) {
     let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  " + String(trackIndex) + " }}"
     _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
@@ -524,15 +533,15 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
 }
 //
 // Retrieves information about the currently active track/station
-func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, album: String, coverUrl: String) {
+func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, album: String, coverUrl: String, activeTrackIndex: Int) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
     let resp = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
     if (resp.count == 0) {
         // Burmi is off
-        return (false, "", "", "", "")
+        return (false, "", "", "", "", 0)
     } else if (resp["Media_Obj"] as! String == "DefaultZeroPlayer") {
         // Burmi is on, but no player is active
-        return (true, "", "", "", "")
+        return (true, "", "", "", "", 0)
     }
     let jsonSongInfo = resp["SongInfo"] as! [String:Any]
     let jsonSongDictionary = resp["SongDictionary"] as! [String:Any]
@@ -540,9 +549,11 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
     var artist: String = ""
     var album: String = ""
     var coverUrl: String = ""
+    var activeTrackIndex: Int = 0
     title = (jsonSongInfo["Title"] as! String)
     coverUrl = (jsonSongDictionary["Cover"] as! String)
     artist = (jsonSongInfo["Artist"] as! String)
+    activeTrackIndex = Int(jsonSongDictionary["Index"] as! String)!
     if (resp["InputName"] as! String == "Linionik Pipe Player") {
         // CD
         album = (jsonSongInfo["Album"] as! String)
@@ -556,7 +567,7 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
         album = (jsonSongInfo["Album"] as! String)
     }
     // TODO Ralf Fehlerbehandlung unbekannter Player fehlt noch
-    return (true, title, artist, album, coverUrl)
+    return (true, title, artist, album, coverUrl, activeTrackIndex)
 }
 //
 // Retrieves Tracklist (List of tracks (or radio stations) in the currently active Track-List/StationList)
@@ -574,10 +585,10 @@ func retrieveTrackList(player: String) -> ([Track]) {
         if (player == "Radio") {
             var artist = (jsonPlayListElements![i]["Album"] as! String)
             artist = artist.replacingOccurrences(of:", " + (jsonPlayListElements![i]["AudioInfo"] as! String), with:(""))
-            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, counter: i, title: artist, artist: jsonPlayListElements![i]["Genre"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, positionInList: i, title: artist, artist: jsonPlayListElements![i]["Genre"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
         } else  {
             // CD / Tidal
-            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, counter: i, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["TrackArtist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
+            retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, positionInList: i, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["TrackArtist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
         }
         
     }
@@ -769,26 +780,17 @@ extension URLSession {
         }
         dataTask.resume()
         _ = semaphore.wait(timeout: DispatchTime.now() + DispatchTimeInterval.milliseconds(timeout))
-
         return (data, response, error)
     }
 }
 
-// TODO Ralf: Dies sollte die synchrone Extension nutzen
+// TODO Document
 func executeGenericHttpRequest(url: String, timeout: Int) -> (String) {
-    guard let myURL = URL(string: url) else {
-        print("Error: \(url) doesn't seem to be a valid URL")
-        return ""
-    }
-
-    do {
-        let myHTMLString = try String(contentsOf: myURL, encoding: .utf8)
-        //print("HTML : \(myHTMLString)")
-        return myHTMLString
-    } catch let error {
-        print("Error: \(error)")
-        return ""
-    }
+    var request = URLRequest(url: URL(string: url)!)
+    request.httpMethod = "GET"
+    let (data, _, _) = URLSession.shared.synchronousDataTask(urlrequest: request, timeout: timeout)
+    let contents = String(data: data ?? Data.init(), encoding: .utf8)
+    return contents!
 }
 
 // TODO Document, noch etwas clean-up
@@ -834,7 +836,7 @@ struct ContentView_Previews: PreviewProvider {
 // TODO Ralf: könnte eigentlich auch für die Detailseite verwendet werden (anstatt einzelner Variablen wie artist)
 struct Track {
     var uniqueID : String
-    var counter: Int    // Position of track in list (1 = topmost)
+    var positionInList: Int    // Position of track in list (0 = topmost)
     var title: String
     var artist: String
     var imageURL: String
