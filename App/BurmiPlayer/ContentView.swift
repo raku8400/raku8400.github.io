@@ -487,7 +487,7 @@ struct ContentView: View {
 }
 //
 // Timeout in Milliseconds for normal (quick) operations when communicating with Burmi
-let TIMEOUT_NORM_MS = 150  // Note: 100 was too low
+let TIMEOUT_NORM_MS = 200  // Note: 100 was too low, 150
 // Timeout in Milliseconds for long (slow) operations when communicating with Burmi
 let TIMEOUT_LONG_MS = 5000
 //
@@ -547,21 +547,19 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
     var album: String = ""
     var coverUrl: String = ""
     var activeTrackIndex: Int = 0
-    title = (jsonSongInfo["Title"] as! String)
     coverUrl = (jsonSongDictionary["Cover"] as! String)
+    title = (jsonSongInfo["Title"] as! String)
     artist = (jsonSongInfo["Artist"] as! String)
+    album = (jsonSongInfo["Album"] as! String)
     activeTrackIndex = Int(jsonSongDictionary["Index"] as! String)!
-    if (resp["InputName"] as! String == "Linionik Pipe Player") {
-        // CD
-        album = (jsonSongInfo["Album"] as! String)
-    } else if (resp["InputName"] as! String == "Radio") {
+    if (resp["InputName"] as! String == "Radio") {
         // Radio
-        artist = (jsonSongDictionary["Album"] as! String)
-        artist = artist.replacingOccurrences(of:", " + (jsonSongDictionary["AudioInfo"] as! String), with:(""))
-        album = "" // TODO Ralf können wir hier was anderes holen??
-    } else if (resp["InputName"] as! String == "WiMP Player") {
-        // Tidal
-        album = (jsonSongInfo["Album"] as! String)
+        let titleAndArtist = (jsonSongInfo["Title"] as! String)  // "Jessie J - Price Tag"
+        let token = titleAndArtist.components(separatedBy: " - ")
+        artist = token[0].trimmingCharacters(in: .whitespacesAndNewlines)
+        title = token[1].trimmingCharacters(in: .whitespacesAndNewlines)
+        album = (jsonSongDictionary["Album"] as! String)
+        album = album.replacingOccurrences(of:", " + (jsonSongDictionary["AudioInfo"] as! String), with:(""))
     }
     // TODO Ralf Fehlerbehandlung unbekannter Player fehlt noch
     return (true, title, artist, album, coverUrl, activeTrackIndex)
@@ -656,7 +654,7 @@ func moveTrackBottom(rowIndex: Int, nbrTracks: Int, player: String) {
 //
 // Helper to move tracks within the tracklist
 func moveTrack(rowIndexStart: Int, rowIndexEnd: Int, player: String) {
-    // TODO Ralf Fehlt noch für Tidal und für Radio
+    // TODO Ralf Prüfen, ob es für Tidal und für Radio funktioniert
     var cmd = "{\"Media_Obj\" : \"zzzz\", \"AudioPlayList\" : {\"Method\" : \"MoveSong\", \"Parameters\" : {\"Source\" : xxxx, \"Destination\" : yyyy}}}"
     cmd = cmd.replacingOccurrences(of:"xxxx", with:String(rowIndexStart))
     cmd = cmd.replacingOccurrences(of:"yyyy", with:String(rowIndexEnd))
