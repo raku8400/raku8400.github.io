@@ -73,7 +73,6 @@ struct ContentView: View {
     // TODO Ralf
     // Lyrics wohl bei Radio disablen, Lyrics wird bei Songwechsel nicht nachgeführt
     // In der Tracklist (Seite 2) noch den aktiv gespielten Track andersfarbig hinterlegen
-    // Das Player Icon (CD etc.) wird initial nicht nachgeführt
     // Die Icons müsste es noch in einer ausgegraut Version (inactive) geben (für Burmi Off/No Player)
     // Create a swipe gesture recognizer
     let swipeGesture = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipe(_:)))
@@ -439,7 +438,7 @@ struct ContentView: View {
         }
         if PAGE_NBR == 3 {
             // PAGE Nbr 3 - Lyrics
-            Text("Lyrics   (by Genius.com)").font(.headline)
+            Text("Lyrics   ").font(.headline) + Text("(by Genius.com)").font(.caption2)
             VStack {
                 ScrollView {
                     Text(LYRICS).onAppear() {
@@ -499,7 +498,7 @@ let IP = "192.168.1.106"  // es war auch schon mal 115
  
 // TODO Document
 func setPlayer(player: String) {
-    // TODO hier nicht den n'ten Song hartcodieren - moment hartcodiert 5 (wobei, woher weiss man den letzten Zustand
+    // TODO hier nicht den n'ten Song hartcodieren - moment hartcodiert 5 (wobei, woher weiss man den letzten Zustand??)
     let cmd = "{\"Media_Obj\" : \"" + player  + "\", \"AudioControl\" : { \"Method\" : \"PlaySongIdx\", \"Parameters\" :  5 }}"
     _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
@@ -553,7 +552,6 @@ func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, alb
     album = (jsonSongInfo["Album"] as! String)
     activeTrackIndex = Int(jsonSongDictionary["Index"] as! String)!
     if (resp["InputName"] as! String == "Radio") {
-        // Radio
         let titleAndArtist = (jsonSongInfo["Title"] as! String)  // "Jessie J - Price Tag"
         let token = titleAndArtist.components(separatedBy: " - ")
         artist = token[0].trimmingCharacters(in: .whitespacesAndNewlines)
@@ -585,7 +583,6 @@ func retrieveTrackList(player: String) -> ([Track]) {
             // CD / Tidal
             retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, positionInList: i, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["TrackArtist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
         }
-        
     }
     return retValue
 }
@@ -704,7 +701,9 @@ func retrieveLyrics(artist: String, title: String) -> String {
         for lyricContainer in lyricContainers {
             retValue = try retValue + lyricContainer.html()
         }
+        // Replace all <BR> tag variants with newlines
         retValue = retValue.replacingOccurrences(of:"<br />", with:"\n")
+        retValue = retValue.replacingOccurrences(of:"<br>", with:"\n")
         // Remove all <SPAN>..</SPAN> tags, but not the values in between
         retValue = retValue.replacingOccurrences(of:"<span[^>]*>", with:"", options: [.regularExpression])
         retValue = retValue.replacingOccurrences(of:"</span>", with:"")
@@ -723,10 +722,19 @@ func retrieveLyrics(artist: String, title: String) -> String {
         // Remove all <PATH>..</PATH> tags, but not the values in between
         retValue = retValue.replacingOccurrences(of:"<path[^>]*>", with:"", options: [.regularExpression])
         retValue = retValue.replacingOccurrences(of:"</path>", with:"")
+        // Remove all <B>..</B> tags, but not the values in between
+        retValue = retValue.replacingOccurrences(of:"<b[^>]*>", with:"", options: [.regularExpression])
+        retValue = retValue.replacingOccurrences(of:"</b>", with:"")
         // Replace multiple CRLF with single ones
         retValue = retValue.replacingOccurrences(of:"\n*\n", with:"\n", options: [.regularExpression])
+        // Remove all </INREAD-AD> tags with potential whitespace ahead of it
+        retValue = retValue.replacingOccurrences(of:"[\\s*|]</inread-ad>", with:"", options: [.regularExpression])
+        // Remove all leading whitespaces
+        retValue = retValue.replacingOccurrences(of:"^\\s+.*", with:"", options: [.regularExpression])
         // Add an empty line before headings
         retValue = retValue.replacingOccurrences(of:"[", with:"\n[")
+        // Undo HTML encodings - TODO Ralf, hier braucht es vermutlich noch weitere
+        retValue = retValue.replacingOccurrences(of:"&amp;", with:"&")
         return retValue
     } catch {
         return ""
