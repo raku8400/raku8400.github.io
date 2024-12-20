@@ -9,11 +9,12 @@ import UIKit;
 import SwiftSoup
 
 /* TODO
+ * Kontext-Menüs auf der Playlist Seite 4 stimmen noch nicht
  * Diverse Kontextmenüs sind nicht für alle PlayMode und Players anwendbar
+ * Lokalisieren: https://stackoverflow.com/questions/76602081/how-to-make-ios-app-that-support-different-languages
  * Die List-spezifischen Commands auf den Tracklist-Elementen müssen noch für Radio und Tidal stimmen (müsste im Python eigentlich bereits gemacht worden sein)
  * Sonderzeichen wie ! oder ' in Songtiteln beim getLyrics beachten (Roxette: Crash-boom-bang), da fehlen noch diverse
  ** Runde Klammern wie bei shine one your crazy diamond (part 1)
- * Wenn der ActivePlayer von "extern" geändert wird, kriegt das die App nicht mit
  * Lyrics Page muss sich bei Song Wechsel noch selbst updaten, ebenso die Seite 2 mit der Playlist
  * Man müsste noch Links zu Band in Playlist etc. einbauen
  * Genre?
@@ -26,14 +27,33 @@ import SwiftSoup
  * Auf der ActiveTrack-Seite: Was wäre das Resultat von Swipe Up/Down
  * Man müsste auf MVC/MVMM umstellen: https://www.netguru.com/blog/mvc-vs-mvvm-on-ios-differences-with-examples#:~:text=Model%2DView%2DController%20(MVC,fit%20for%20your%20next%20project.
 */
-
+//
+// UI Structure to display the circles indicating the various pages
+struct PageNbrButtons: View {
+    @Binding var pageNbr: Int
+    var isPlayerRadio: Bool
+    var body: some View {
+        HStack {
+            ForEach(1...(isPlayerRadio ? 3 : 4), id:\.self) { i in
+                Button(action: { pageNbr = i }) {
+                    Image(systemName: (pageNbr == i) ? "circle.fill" : "circle")
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                }
+            }
+        }
+    }
+}
+//
+// Main UI Structure
 struct ContentView: View {
     //
     // Page Nbr to be displayed
     //   1 = Player with active Track
     //   2 = TrackList with Tracks/Stations
-    //   3 = Lyrics
-    @State var PAGE_NBR: Int8
+    //   3 = Lyrics of active Track
+    //   4 = Playlists (CD/Tidal only)
+    @State var PAGE_NBR: Int
     // True if Burmi is online, otherwise False
     @State var IS_BURMI_ON: Bool
     // Name of the player:
@@ -60,6 +80,8 @@ struct ContentView: View {
     @State var ACTIVE_TRACK_INDEX: Int
     // List of tracks / stations in the active playlist
     @State var TRACKS: [Track]
+    // List of tracks / stations in the active playlist
+    @State var PLAYLISTS: [Playlist]
     // Lyrics of the currently played track
     @State var LYRICS: String
     // PopUp for Playlist Name shown
@@ -95,7 +117,7 @@ struct ContentView: View {
     // Initializes the various state variables
     // Source https://stackoverflow.com/questions/56691630/swiftui-state-var-initialization-issue
     init () {
-        var pageNbr: Int8
+        var pageNbr: Int
         var isBurmiOn: Bool
         var isTrackPlaying: Bool
         var isShuffle: Bool
@@ -106,6 +128,7 @@ struct ContentView: View {
         var artist: String
         var coverURL: String
         var tracks: [Track]
+        var playlists: [Playlist]
         var lyrics: String
         var activeTrackIndex: Int
         pageNbr = 1
@@ -128,7 +151,8 @@ struct ContentView: View {
         tracks = retrieveTrackList(player: player)
         _TRACKS = State(initialValue: tracks)
         _LYRICS = State(initialValue: lyrics)
-        
+        playlists = retrievePlaylistList(player: player)
+        _PLAYLISTS = State(initialValue: playlists)
     }
     
     var body: some View {
@@ -292,29 +316,7 @@ struct ContentView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                HStack {
-                    Button(action: {
-                        PAGE_NBR = 1
-                    }) {
-                        Image(systemName: (PAGE_NBR == 1) ? "circle.fill" : "circle")
-                            .resizable()
-                            .frame(width: 18, height: 18)
-                    }
-                    Button(action: {
-                        PAGE_NBR = 2
-                    }) {
-                        Image(systemName: (PAGE_NBR == 2) ? "circle.fill" : "circle")
-                            .resizable()
-                            .frame(width: 18, height: 18)
-                    }
-                    Button(action: {
-                        PAGE_NBR = 3
-                    }) {
-                        Image(systemName: (PAGE_NBR == 3) ? "circle.fill" : "circle")
-                            .resizable()
-                            .frame(width: 18, height: 18)
-                    }
-                }
+                PageNbrButtons(pageNbr: $PAGE_NBR, isPlayerRadio: PLAYER == "Radio")
             }.onReceive(timer, perform: { _ in
                 print("Self-Update Page 1")
                 //print("bounds h:" + UIScreen.main.bounds.height.description)
@@ -406,29 +408,7 @@ struct ContentView: View {
                             //proxy.scrollTo(ACTIVE_TRACK_INDEX, anchor: .top)
                         })
                     }
-                    HStack {
-                        Button(action: {
-                            PAGE_NBR = 1
-                        }) {
-                            Image(systemName: (PAGE_NBR == 1) ? "circle.fill" : "circle")
-                                .resizable()
-                                .frame(width: 18, height: 18)
-                        }
-                        Button(action: {
-                            PAGE_NBR = 2
-                        }) {
-                            Image(systemName: (PAGE_NBR == 2) ? "circle.fill" : "circle")
-                                .resizable()
-                                .frame(width: 18, height: 18)
-                        }
-                        Button(action: {
-                            PAGE_NBR = 3
-                        }) {
-                            Image(systemName: (PAGE_NBR == 3) ? "circle.fill" : "circle")
-                                .resizable()
-                                .frame(width: 18, height: 18)
-                        }
-                    }
+                    PageNbrButtons(pageNbr: $PAGE_NBR, isPlayerRadio: PLAYER == "Radio")
                 }.onReceive(timer, perform: { _ in
                     print("Self-Update Page 2")
                     (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
@@ -448,35 +428,104 @@ struct ContentView: View {
                     .padding()
                     .frame(maxHeight: .infinity)
                 }
-            }
-            HStack {
-                Button(action: {
-                    PAGE_NBR = 1
-                }) {
-                    Image(systemName: (PAGE_NBR == 1) ? "circle.fill" : "circle")
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                }
-                Button(action: {
-                    PAGE_NBR = 2
-                }) {
-                    Image(systemName: (PAGE_NBR == 2) ? "circle.fill" : "circle")
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                }
-                Button(action: {
-                    PAGE_NBR = 3
-                }) {
-                    Image(systemName: (PAGE_NBR == 3) ? "circle.fill" : "circle")
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                }
             }.onReceive(timer, perform: { _ in
                 print("Self-Update Page 3")
                 (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                 LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
             })
+            PageNbrButtons(pageNbr: $PAGE_NBR, isPlayerRadio: PLAYER == "Radio")
             // END Page Nbr 3
+        }
+        if PAGE_NBR == 4 {
+            // PAGE Nbr 4 - Playlist
+            VStack {
+                HStack {
+                    VStack {
+                        Text("Playlists").font(.headline).multilineTextAlignment(.center)
+                    }.frame(maxWidth: .infinity, alignment: .center)/*
+                    Menu("...") {
+                        Button("Save", systemImage: "square.and.arrow.down.fill") {
+                            SHOWPLAYLISTALERT.toggle()
+                        }
+                        Divider()
+                        Button("Delete", systemImage: "trash", action: {
+                            removeAllTracks(player: PLAYER)
+                            TRACKS = retrieveTrackList(player: PLAYER)
+                        })
+                    }
+                    Spacer()*/
+                } // TODO Ralf
+                .alert("Save Tracks as Playlist", isPresented: $SHOWPLAYLISTALERT) {
+                    TextField("Name of Playlist", text: $PLAYLISTNAME)
+                    Button("OK", action: saveTracklistAsPlaylist)
+                    Button("Cancel", role: .cancel) { }
+                }
+                ScrollViewReader { proxy in
+                    VStack {
+                        List(PLAYLISTS, id: \.uniqueID) { playlist in
+                            HStack {
+                                AsyncImage(url: URL(string: playlist.imageURL)){ result in
+                                    result.image?
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
+                                }
+                                .contentShape(Rectangle())
+                                VStack(alignment: .leading) {
+                                    Text(playlist.title)
+                                        .fontWeight(.bold)
+                                        .multilineTextAlignment(.leading)
+                                    /*
+                                    Text(playlist.artist)
+                                        .multilineTextAlignment(.leading)
+                                     */
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())/*
+                                Menu("...") {
+                                    Button("Top", systemImage: "arrow.up.to.line", action: {
+                                        moveTrackTop(rowIndex: playlist.positionInList, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                    Button("Up", systemImage: "arrow.up", action: {
+                                        moveTrackUp(rowIndex: playlist.positionInList, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                    Button("Down", systemImage: "arrow.down", action: {
+                                        moveTrackDown(rowIndex: playlist.positionInList, nbrTracks: TRACKS.count, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                    Button("Bottom", systemImage: "arrow.down.to.line", action: {
+                                        moveTrackBottom(rowIndex: track.positionInList, nbrTracks: TRACKS.count, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                    Divider()
+                                    Button("Remove", systemImage: "trash", action: {
+                                        removeTrack(rowIndex: track.positionInList, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    })
+                                }*/
+                            }
+                            .onTapGesture {
+                                playTrackIndex(player: PLAYER, trackIndex: playlist.positionInList)
+                                (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
+                                TRACKS = retrieveTrackList(player: PLAYER)
+                                LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
+                            }
+                            //.contentShape(Rectangle())
+                            .id(playlist.positionInList)
+                            //.background(play.positionInList == ACTIVE_TRACK_INDEX ? Color.secondary : Color.clear)
+                        }.onReceive(timer, perform: { _ in
+                            //(IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
+                            //proxy.scrollTo(ACTIVE_TRACK_INDEX, anchor: .top)
+                        })
+                    }
+                    PageNbrButtons(pageNbr: $PAGE_NBR, isPlayerRadio: PLAYER == "Radio")
+                }.onReceive(timer, perform: { _ in
+                    print("Self-Update Page 2")
+                    (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
+                })
+            }            // END Page Nbr 4
         }
     }
     func saveTracklistAsPlaylist() {
@@ -584,6 +633,22 @@ func retrieveTrackList(player: String) -> ([Track]) {
             retValue.append(Track(uniqueID: jsonPlayListElements![i]["SongID"] as! String, positionInList: i, title: jsonPlayListElements![i]["Title"] as! String, artist: jsonPlayListElements![i]["TrackArtist"] as! String, imageURL: jsonPlayListElements![i]["Cover"] as! String))
         }
     }
+    return retValue
+}
+
+func retrievePlaylistList(player: String) -> ([Playlist]) {
+    if (player.isEmpty || player == "Radio") {
+        // Burmi off or no player active or Radio (which doesn't have Playlists
+        return []
+    }
+    var cmd = ""
+    if (player == "Linionik Pipe Player") {
+        cmd = {"Media_Obj" : "Edit", "Method" : "GetPlaylists", "StartEntry" : 0}"
+    } else {
+        // TODO Ralf Tidal fehlt noch
+        cmd = ""
+    }
+    var retValue: [Playlist] = []
     return retValue
 }
 //
@@ -842,5 +907,13 @@ struct Track {
     var positionInList: Int    // Position of track in list (0 = topmost)
     var title: String
     var artist: String
+    var imageURL: String
+}
+//
+// Data Structure for a playlist in the playlist  list
+struct Playlist {
+    var uniqueID : String
+    var positionInList: Int    // Position of track in list (0 = topmost)
+    var title: String
     var imageURL: String
 }
