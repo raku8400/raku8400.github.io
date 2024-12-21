@@ -10,6 +10,7 @@ import SwiftSoup
 
 /* TODO
  * Kontext-Menüs auf der Playlist Seite 4 stimmen noch nicht
+ * Seite 4 fehlt noch für Tidal
  * Diverse Kontextmenüs sind nicht für alle PlayMode und Players anwendbar
  * Lokalisieren: https://stackoverflow.com/questions/76602081/how-to-make-ios-app-that-support-different-languages
  * Die List-spezifischen Commands auf den Tracklist-Elementen müssen noch für Radio und Tidal stimmen (müsste im Python eigentlich bereits gemacht worden sein)
@@ -68,6 +69,8 @@ struct ContentView: View {
     @State var IS_MODE_SHUFFLE: Bool
     // True if player is currently in repeate mode
     @State var IS_MODE_REPEAT: Bool
+    // Value of the MediaLibSession attribute which is required in some Burmi HTTP calls
+    @State var MEDIA_LIB_SESSION: String
     // Name of the currently active track
     @State var ACTIVE_TRACK: String
     // Name of the currently active artist
@@ -123,6 +126,7 @@ struct ContentView: View {
         var isShuffle: Bool
         var isRepeat: Bool
         var player: String
+        var mediaLibSession: String
         var track: String
         var album: String
         var artist: String
@@ -133,9 +137,12 @@ struct ContentView: View {
         var activeTrackIndex: Int
         pageNbr = 1
         player = ""
-        lyrics =  ""
+        lyrics = ""
+        mediaLibSession = ""
         _PAGE_NBR = State(initialValue: pageNbr)
         _PLAYER = State(initialValue: player)
+        mediaLibSession = retrieveMediaLibSession()
+        _MEDIA_LIB_SESSION = State(initialValue: mediaLibSession)
         (isBurmiOn, track, artist, album, coverURL, activeTrackIndex) = retrieveTrackInfo()
         _IS_BURMI_ON = State(initialValue: isBurmiOn)
         _ACTIVE_TRACK = State(initialValue: track)
@@ -151,7 +158,7 @@ struct ContentView: View {
         tracks = retrieveTrackList(player: player)
         _TRACKS = State(initialValue: tracks)
         _LYRICS = State(initialValue: lyrics)
-        playlists = retrievePlaylistList(player: player)
+        playlists = retrievePlaylistList(player: player, mediaLibSession: mediaLibSession)
         _PLAYLISTS = State(initialValue: playlists)
     }
     
@@ -167,6 +174,7 @@ struct ContentView: View {
                             sleep(1)
                             (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                             TRACKS = retrieveTrackList(player: PLAYER)
+                            PLAYLISTS = retrievePlaylistList(player: PLAYER, mediaLibSession: MEDIA_LIB_SESSION)
                         }
                     })
                     {
@@ -181,6 +189,7 @@ struct ContentView: View {
                             sleep(1)
                             (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                             TRACKS = retrieveTrackList(player: PLAYER)
+                            PLAYLISTS = retrievePlaylistList(player: PLAYER, mediaLibSession: MEDIA_LIB_SESSION)
                         }
                     })
                     {
@@ -195,6 +204,7 @@ struct ContentView: View {
                             sleep(1)
                             (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                             TRACKS = retrieveTrackList(player: PLAYER)
+                            PLAYLISTS = retrievePlaylistList(player: PLAYER, mediaLibSession: MEDIA_LIB_SESSION)
                         }
                     }) {
                         Image(systemName: PLAYER == "WiMP Player" ? "icloud.and.arrow.down.fill" : "icloud.and.arrow.down")
@@ -400,7 +410,7 @@ struct ContentView: View {
                                 TRACKS = retrieveTrackList(player: PLAYER)
                                 LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
                             }
-                            //.contentShape(Rectangle())
+                            .contentShape(Rectangle())
                             .id(track.positionInList)
                             .background(track.positionInList == ACTIVE_TRACK_INDEX ? Color.secondary : Color.clear)
                         }.onReceive(timer, perform: { _ in
@@ -442,23 +452,7 @@ struct ContentView: View {
                 HStack {
                     VStack {
                         Text("Playlists").font(.headline).multilineTextAlignment(.center)
-                    }.frame(maxWidth: .infinity, alignment: .center)/*
-                    Menu("...") {
-                        Button("Save", systemImage: "square.and.arrow.down.fill") {
-                            SHOWPLAYLISTALERT.toggle()
-                        }
-                        Divider()
-                        Button("Delete", systemImage: "trash", action: {
-                            removeAllTracks(player: PLAYER)
-                            TRACKS = retrieveTrackList(player: PLAYER)
-                        })
-                    }
-                    Spacer()*/
-                } // TODO Ralf
-                .alert("Save Tracks as Playlist", isPresented: $SHOWPLAYLISTALERT) {
-                    TextField("Name of Playlist", text: $PLAYLISTNAME)
-                    Button("OK", action: saveTracklistAsPlaylist)
-                    Button("Cancel", role: .cancel) { }
+                    }.frame(maxWidth: .infinity, alignment: .center)
                 }
                 ScrollViewReader { proxy in
                     VStack {
@@ -467,22 +461,25 @@ struct ContentView: View {
                                 AsyncImage(url: URL(string: playlist.imageURL)){ result in
                                     result.image?
                                         .resizable()
-                                        .scaledToFill()
-                                        .frame(width: UIScreen.main.bounds.height / 25, height: UIScreen.main.bounds.height / 25)
+                                        .scaledToFit()
+                                        .frame(width: UIScreen.main.bounds.height / 10, height: UIScreen.main.bounds.height / 10)
                                 }
-                                .contentShape(Rectangle())
                                 VStack(alignment: .leading) {
                                     Text(playlist.title)
                                         .fontWeight(.bold)
                                         .multilineTextAlignment(.leading)
-                                    /*
-                                    Text(playlist.artist)
+                                    Text((playlist.nbrTracks > 0 ? (String(playlist.nbrTracks) + " Songs, " + String(playlist.lengthSecs / 60) + " Min.") : "n/a"))
                                         .multilineTextAlignment(.leading)
-                                     */
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())/*
                                 Menu("...") {
+                                    Divider()
+                                    Button("Delete Playlist", systemImage: "trash", action: {
+                                        deletePlaylist(playlistName: playlist.title, player: PLAYER, playlistId: playlist.uniqueID)
+                                        PLAYLISTS = []
+                                        PLAYLISTS = retrievePlaylistList(player: PLAYER, mediaLibSession: MEDIA_LIB_SESSION)
+                                    })
+                                    /*
                                     Button("Top", systemImage: "arrow.up.to.line", action: {
                                         moveTrackTop(rowIndex: playlist.positionInList, player: PLAYER)
                                         TRACKS = retrieveTrackList(player: PLAYER)
@@ -499,19 +496,16 @@ struct ContentView: View {
                                         moveTrackBottom(rowIndex: track.positionInList, nbrTracks: TRACKS.count, player: PLAYER)
                                         TRACKS = retrieveTrackList(player: PLAYER)
                                     })
-                                    Divider()
-                                    Button("Remove", systemImage: "trash", action: {
-                                        removeTrack(rowIndex: track.positionInList, player: PLAYER)
-                                        TRACKS = retrieveTrackList(player: PLAYER)
-                                    })
-                                }*/
+                                   */
+                                }
                             }
+                            /*
                             .onTapGesture {
                                 playTrackIndex(player: PLAYER, trackIndex: playlist.positionInList)
                                 (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
                                 TRACKS = retrieveTrackList(player: PLAYER)
                                 LYRICS = retrieveLyrics(artist: ACTIVE_ARTIST, title: ACTIVE_TRACK)
-                            }
+                            }*/
                             //.contentShape(Rectangle())
                             .id(playlist.positionInList)
                             //.background(play.positionInList == ACTIVE_TRACK_INDEX ? Color.secondary : Color.clear)
@@ -577,6 +571,14 @@ func retrievePlayerInfo() -> (isBurmiOn: Bool, isTrackPlaying: Bool, isShuffle: 
     }
 }
 //
+// Retrieves the value of the MediaLibSession attribute which some Burmi HTTP calls need
+func retrieveMediaLibSession() -> String {
+    let cmd = "{\"Media_Obj\" : \"MediaLibrary\", \"Method\" : \"OpenMediaLibSession\"}"
+    let resp = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_LONG_MS)
+    return resp["mediaLibSession"] as! String
+}
+
+//
 // Retrieves information about the currently active track/station
 func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, album: String, coverUrl: String, activeTrackIndex: Int) {
     let cmd = "{\"Media_Obj\" : \"ActiveInput\",\"Method\" : \"ActiveInputCmd\",\"Parameters\" : {\"AudioGetInfo\" : {\"Method\" : \"GetCurrentSongInfo\"}}}"
@@ -635,21 +637,50 @@ func retrieveTrackList(player: String) -> ([Track]) {
     }
     return retValue
 }
-
-func retrievePlaylistList(player: String) -> ([Playlist]) {
+//
+// Retrieves the playlists for the given player
+func retrievePlaylistList(player: String, mediaLibSession: String) -> ([Playlist]) {
     if (player.isEmpty || player == "Radio") {
         // Burmi off or no player active or Radio (which doesn't have Playlists
         return []
     }
     var cmd = ""
     if (player == "Linionik Pipe Player") {
-        cmd = {"Media_Obj" : "Edit", "Method" : "GetPlaylists", "StartEntry" : 0}"
+        cmd = "{\"Media_Obj\": \"MediaLibrary\", \"Method\": \"MediaLibSession_NodeGet\", \"Parameters\": {\"mediaLibSession\": \"" + mediaLibSession + "\", \"Node\": \"MediaLibPlaylist\", \"LimitStart\": 0, \"LimitCount\": 100, \"DB_Fields\": [\"System\"]}}"
     } else {
         // TODO Ralf Tidal fehlt noch
         cmd = ""
     }
+    let resp = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_LONG_MS)
+    let jsonPlayLists = (resp["NodeGet"] as? [Dictionary<String, AnyObject>])
     var retValue: [Playlist] = []
+    var objId : Int?
+    var nbrTracks : Int?
+    var lengthSecs : Int?
+    for i in 0..<jsonPlayLists!.count {
+        print("Playlistname: " + (jsonPlayLists![i]["title"] as! String) + ", ID: " + String(jsonPlayLists![i]["orig_id"] as! Int))
+        objId = jsonPlayLists![i]["obj_id"] as? Int
+        nbrTracks = jsonPlayLists![i]["anzahl"] as? Int
+        lengthSecs = jsonPlayLists![i]["length"] as? Int
+        retValue.append(Playlist(uniqueID: jsonPlayLists![i]["orig_id"] as! Int, positionInList: i, objID: objId != nil ? objId! : -1, nbrTracks: nbrTracks != nil ? nbrTracks! : -1, lengthSecs: lengthSecs != nil ? lengthSecs! : -1, title: jsonPlayLists![i]["title"] as! String, imageURL: "http://" + IP + "/cdfile/plcovers/" + String(jsonPlayLists![i]["orig_id"] as! Int) + ".jpg?ics=1734550888"))
+    }
     return retValue
+}
+// Deletes the given Playlist
+// TODO Ralf Tidal fehlt noch
+func deletePlaylist(playlistName: String, player: String, playlistId: Int) {
+    if (player.isEmpty || player == "Radio") {
+        // Burmi off or no player active or Radio (which doesn't have Playlists
+        return
+    }
+    if (playlistId > 100000) {
+        print("Playlist ID too high, cannot be deleted: " + String(playlistId))
+        // Virtual Playlist by Burmi
+        return
+    }
+    let cmd = "http://" + IP + "/gen_playlist.php?action=delete&name=xxxx".replacingOccurrences(of: "xxxx", with: playlistName)
+    print("cmd: " + cmd)
+    _ = executeGenericHttpRequest(url: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Starts or pauses playing of a currently active track
@@ -741,8 +772,7 @@ func removeAllTracks(player: String) {
 //
 // Saves Tracklist as playlist
 func removeAllTracks(playlistName: String) {
-    var cmd = "http://" + IP + "/gen_playlist.php?action=new&name=xxxx"
-    cmd = cmd.replacingOccurrences(of:"xxxx", with:playlistName)
+    var cmd = "http://" + IP + "/gen_playlist.php?action=new&name=xxxx".replacingOccurrences(of:"xxxx", with:playlistName)
     _ = executeGenericHttpRequest(url: cmd, timeout: TIMEOUT_NORM_MS) // # 300 DUPLICATE can be ok here
 }
 //
@@ -852,7 +882,7 @@ extension URLSession {
     }
 }
 
-// TODO Document
+// TODO Document Macht das, was im Python folgendes ist "BurmiHTTPCall.executeGet(f"{IP}/{tmp_cmd}")"
 func executeGenericHttpRequest(url: String, timeout: Int) -> (String) {
     var request = URLRequest(url: URL(string: url)!)
     request.httpMethod = "GET"
@@ -871,7 +901,8 @@ func executeBurmiHttpRequest(cmd: String, timeout: Int) -> (Dictionary<String, A
     // Suffix of URL (part directly before the param)
     let URL_SUF = "_[MC_JSON]_"
     let urlString = "http://" + IP + URL_PRE + authStringHash + URL_SUF + encodedCmd;
-    //print("urlString: " + urlString)
+    print("cmd: " + cmd)
+    print("urlString: " + urlString)
     // Initialize return value
     var json = [String: AnyObject]()
     // Initialize HTTP Request
@@ -912,8 +943,11 @@ struct Track {
 //
 // Data Structure for a playlist in the playlist  list
 struct Playlist {
-    var uniqueID : String
+    var uniqueID : Int
     var positionInList: Int    // Position of track in list (0 = topmost)
+    var objID: Int
+    var nbrTracks: Int
+    var lengthSecs: Int
     var title: String
     var imageURL: String
 }
