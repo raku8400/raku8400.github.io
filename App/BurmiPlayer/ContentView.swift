@@ -9,7 +9,7 @@ import UIKit;
 import SwiftSoup
 
 /* TODO
- * Kontext-Menüs auf der Playlist Seite 4 stimmen noch nicht
+ * Rename Playlist funktioniert nicht. Zuerst den Befehl im Postman hinkriegen. POST, aber nicht stabil
  * Seite 4 fehlt noch für Tidal
  * Diverse Kontextmenüs sind nicht für alle PlayMode und Players anwendbar
  * Lokalisieren: https://stackoverflow.com/questions/76602081/how-to-make-ios-app-that-support-different-languages
@@ -87,10 +87,16 @@ struct ContentView: View {
     @State var PLAYLISTS: [Playlist]
     // Lyrics of the currently played track
     @State var LYRICS: String
+    // PopUp for Tracklist Name shown
+    @State private var SHOWTRACKLISTALERT = false
+    // Name of Tracklist as Playlist
+    @State private var TRACKLISTNAME = ""
     // PopUp for Playlist Name shown
     @State private var SHOWPLAYLISTALERT = false
     // Name of Playlist
     @State private var PLAYLISTNAME = ""
+    // Obj_ID of the currently active Playlist
+    @State private var PLAYLIST_OBJ_ID: Int
     // Upates the UI every 3 sec., Source: https://maheshsai252.medium.com/updating-swiftui-view-for-every-x-seconds-559360ce3b4a
     let timer = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
@@ -135,9 +141,11 @@ struct ContentView: View {
         var playlists: [Playlist]
         var lyrics: String
         var activeTrackIndex: Int
+        var playlistObjId: Int
         pageNbr = 1
         player = ""
         lyrics = ""
+        playlistObjId = -1
         mediaLibSession = ""
         _PAGE_NBR = State(initialValue: pageNbr)
         _PLAYER = State(initialValue: player)
@@ -158,6 +166,7 @@ struct ContentView: View {
         tracks = retrieveTrackList(player: player)
         _TRACKS = State(initialValue: tracks)
         _LYRICS = State(initialValue: lyrics)
+        _PLAYLIST_OBJ_ID = State(initialValue: playlistObjId)
         playlists = retrievePlaylistList(player: player, mediaLibSession: mediaLibSession)
         _PLAYLISTS = State(initialValue: playlists)
     }
@@ -304,8 +313,8 @@ struct ContentView: View {
                         .onEnded { value in
                             print(value.translation)
                             switch(value.translation.width, value.translation.height) {
-                            case (...0, -100...100):  trackNext()     // left swipre
-                            case (0..., -100...10):  trackPrevious() // right swipe
+                            case (...0, -100...100):  trackNext()       // left swipre
+                            case (0..., -100...10):  trackPrevious()    // right swipe
                             case (-100...100, ...0):  print("up swipe")
                             case (-100...100, 0...):  print("down swipe")
                             default:  print("no clue")
@@ -345,7 +354,7 @@ struct ContentView: View {
                     }.frame(maxWidth: .infinity, alignment: .center)
                     Menu("...") {
                         Button("Save", systemImage: "square.and.arrow.down.fill") {
-                            SHOWPLAYLISTALERT.toggle()
+                            SHOWTRACKLISTALERT.toggle()
                         }
                         Divider()
                         Button("Delete", systemImage: "trash", action: {
@@ -355,9 +364,9 @@ struct ContentView: View {
                     }
                     Spacer()
                 }
-                .alert("Save Tracks as Playlist", isPresented: $SHOWPLAYLISTALERT) {
-                    TextField("Name of Playlist", text: $PLAYLISTNAME)
-                    Button("OK", action: saveTracklistAsPlaylist)
+                .alert("Save Tracks as Playlist", isPresented: $SHOWTRACKLISTALERT) {
+                    TextField("Name of Playlist", text: $TRACKLISTNAME)
+                    Button("OK", action: tracklistActionHelper)
                     Button("Cancel", role: .cancel) { }
                 }
                 ScrollViewReader { proxy in
@@ -454,6 +463,11 @@ struct ContentView: View {
                         Text("Playlists").font(.headline).multilineTextAlignment(.center)
                     }.frame(maxWidth: .infinity, alignment: .center)
                 }
+                .alert("Save Playlist", isPresented: $SHOWPLAYLISTALERT) {
+                    TextField("Name of Playlist", text: $PLAYLISTNAME)
+                    //Button("OK", action: playlistActionHelper)
+                    Button("Cancel", role: .cancel) { }
+                }
                 ScrollViewReader { proxy in
                     VStack {
                         List(PLAYLISTS, id: \.uniqueID) { playlist in
@@ -473,33 +487,34 @@ struct ContentView: View {
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 Menu("...") {
+                                    /* TODO Ralf: Funktioniert noch nicht
+                                    Button("Rename Playlist", systemImage: "square.and.arrow.down.fill") {
+                                        PLAYLIST_OBJ_ID = playlist.objID
+                                        SHOWPLAYLISTALERT.toggle()
+                                        PLAYLISTS = []
+                                        PLAYLISTS = retrievePlaylistList(player: PLAYER, mediaLibSession: MEDIA_LIB_SESSION)
+                                    }
+                                    */
+                                    Button("Load Playlist As Tracklist", systemImage: "text.insert") {
+                                        removeAllTracks(player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                        appendSongsFromPlaylistToTracklist(mediaLibSession: MEDIA_LIB_SESSION, playlistId: playlist.uniqueID, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    }
+                                    Button("Append Playlist To Tracklist", systemImage: "text.append") {
+                                        appendSongsFromPlaylistToTracklist(mediaLibSession: MEDIA_LIB_SESSION, playlistId: playlist.uniqueID, player: PLAYER)
+                                        TRACKS = retrieveTrackList(player: PLAYER)
+                                    }
                                     Divider()
                                     Button("Delete Playlist", systemImage: "trash", action: {
-                                        deletePlaylist(playlistName: playlist.title, player: PLAYER, playlistId: playlist.uniqueID)
+                                        deletePlaylist(playlistName: playlist.title, player: PLAYER, playlistId: playlist.uniqueID, playlistObjId: playlist.objID)
                                         PLAYLISTS = []
                                         PLAYLISTS = retrievePlaylistList(player: PLAYER, mediaLibSession: MEDIA_LIB_SESSION)
                                     })
-                                    /*
-                                    Button("Top", systemImage: "arrow.up.to.line", action: {
-                                        moveTrackTop(rowIndex: playlist.positionInList, player: PLAYER)
-                                        TRACKS = retrieveTrackList(player: PLAYER)
-                                    })
-                                    Button("Up", systemImage: "arrow.up", action: {
-                                        moveTrackUp(rowIndex: playlist.positionInList, player: PLAYER)
-                                        TRACKS = retrieveTrackList(player: PLAYER)
-                                    })
-                                    Button("Down", systemImage: "arrow.down", action: {
-                                        moveTrackDown(rowIndex: playlist.positionInList, nbrTracks: TRACKS.count, player: PLAYER)
-                                        TRACKS = retrieveTrackList(player: PLAYER)
-                                    })
-                                    Button("Bottom", systemImage: "arrow.down.to.line", action: {
-                                        moveTrackBottom(rowIndex: track.positionInList, nbrTracks: TRACKS.count, player: PLAYER)
-                                        TRACKS = retrieveTrackList(player: PLAYER)
-                                    })
-                                   */
                                 }
                             }
                             /*
+                             // TODO Ralf reaktivieren
                             .onTapGesture {
                                 playTrackIndex(player: PLAYER, trackIndex: playlist.positionInList)
                                 (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
@@ -516,16 +531,26 @@ struct ContentView: View {
                     }
                     PageNbrButtons(pageNbr: $PAGE_NBR, isPlayerRadio: PLAYER == "Radio")
                 }.onReceive(timer, perform: { _ in
-                    print("Self-Update Page 2")
-                    (IS_BURMI_ON, ACTIVE_TRACK, ACTIVE_ARTIST, ACTIVE_ALBUM, ACTIVE_COVER_URL, ACTIVE_TRACK_INDEX) = retrieveTrackInfo()
+                    print("Self-Update Page 4 nothing intentional")
+                    /*
+                    PLAYLISTS = []
+                    PLAYLISTS = retrievePlaylistList(player: PLAYER, mediaLibSession: MEDIA_LIB_SESSION)
+                    */
                 })
-            }            // END Page Nbr 4
+            }
+            // END Page Nbr 4
         }
     }
-    func saveTracklistAsPlaylist() {
-        print("You entered \(PLAYLISTNAME)")
-        removeAllTracks(playlistName: PLAYLISTNAME)
+    func tracklistActionHelper() {
+        print("You entered as new playlist name \(TRACKLISTNAME)")
+        saveTracklistAsPlaylist(playlistName: TRACKLISTNAME)
     }
+    /*
+    func playlistActionHelper() {
+        print("You entered as new playlist name \(PLAYLISTNAME) for playlist ID \(PLAYLIST_OBJ_ID)")
+        renamePlaylist(playlistName: PLAYLISTNAME, playlistId: PLAYLIST_OBJ_ID)
+    }
+    */
 }
 //
 // Timeout in Milliseconds for normal (quick) operations when communicating with Burmi
@@ -577,7 +602,6 @@ func retrieveMediaLibSession() -> String {
     let resp = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_LONG_MS)
     return resp["mediaLibSession"] as! String
 }
-
 //
 // Retrieves information about the currently active track/station
 func retrieveTrackInfo() -> (isBurmiOn: Bool, title: String, artist: String, album: String, coverUrl: String, activeTrackIndex: Int) {
@@ -658,7 +682,6 @@ func retrievePlaylistList(player: String, mediaLibSession: String) -> ([Playlist
     var nbrTracks : Int?
     var lengthSecs : Int?
     for i in 0..<jsonPlayLists!.count {
-        print("Playlistname: " + (jsonPlayLists![i]["title"] as! String) + ", ID: " + String(jsonPlayLists![i]["orig_id"] as! Int))
         objId = jsonPlayLists![i]["obj_id"] as? Int
         nbrTracks = jsonPlayLists![i]["anzahl"] as? Int
         lengthSecs = jsonPlayLists![i]["length"] as? Int
@@ -667,19 +690,18 @@ func retrievePlaylistList(player: String, mediaLibSession: String) -> ([Playlist
     return retValue
 }
 // Deletes the given Playlist
-// TODO Ralf Tidal fehlt noch
-func deletePlaylist(playlistName: String, player: String, playlistId: Int) {
+// TODO Ralf Tidal fehlt noch, TODO Müsste obj_id < 0 sein anstatt hohe playlistID
+func deletePlaylist(playlistName: String, player: String, playlistId: Int, playlistObjId: Int) {
     if (player.isEmpty || player == "Radio") {
-        // Burmi off or no player active or Radio (which doesn't have Playlists
+        // Burmi off or no player active or Radio (which doesn't have Playlists)
         return
     }
-    if (playlistId > 100000) {
-        print("Playlist ID too high, cannot be deleted: " + String(playlistId))
+    if (playlistObjId < 0) {
+        print("Virtual Playlist by Burmi, cannot be deleted: " + String(playlistId))
         // Virtual Playlist by Burmi
         return
     }
     let cmd = "http://" + IP + "/gen_playlist.php?action=delete&name=xxxx".replacingOccurrences(of: "xxxx", with: playlistName)
-    print("cmd: " + cmd)
     _ = executeGenericHttpRequest(url: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
@@ -765,15 +787,37 @@ func removeTrack(rowIndex: Int, player: String) {
 //
 // Removes all tracks from the tracklist
 func removeAllTracks(player: String) {
-    var cmd = "{\"Media_Obj\" : \"zzzz\", \"AudioPlayList\" : {\"Method\" : \"RemoveAllSongs\"}}"
-    cmd = cmd.replacingOccurrences(of:"zzzz", with:player)
+    let cmd = "{\"Media_Obj\" : \"zzzz\", \"AudioPlayList\" : {\"Method\" : \"RemoveAllSongs\"}}".replacingOccurrences(of:"zzzz", with:player)
     _ = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_NORM_MS)
 }
 //
 // Saves Tracklist as playlist
-func removeAllTracks(playlistName: String) {
-    var cmd = "http://" + IP + "/gen_playlist.php?action=new&name=xxxx".replacingOccurrences(of:"xxxx", with:playlistName)
+func saveTracklistAsPlaylist(playlistName: String) {
+    let cmd = "http://" + IP + "/gen_playlist.php?action=new&name=xxxx".replacingOccurrences(of:"xxxx", with:playlistName)
     _ = executeGenericHttpRequest(url: cmd, timeout: TIMEOUT_NORM_MS) // # 300 DUPLICATE can be ok here
+}
+/* TODO Ralf Funktioniert nicht
+//
+// Renames the via ID given playlist with the given name
+func renamePlaylist(playlistName: String, playlistId: Int) {
+    let cmd = "http://" + IP + "/json2.php?{\"Media_Obj\": \"Edit\", \"Method\": \"SavePlsTrackChanges\", \"Parameters\": {\"PLsID\": " + String(playlistId) + ", \"PlsNewName\": \"" + playlistName + "\", \"TrackOrder\": \"\"}}"
+    _ = executeGenericHttpRequest(url: cmd, timeout: TIMEOUT_NORM_MS)
+}
+*/
+//
+// Appends all songs for the given playlist to the tracklist
+func appendSongsFromPlaylistToTracklist(mediaLibSession: String, playlistId: Int, player: String) {
+    var cmd = "{\"Media_Obj\": \"MediaLibrary\", \"Method\": \"MediaLibSession_NodeExtItemGet\", \"Parameters\": {\"mediaLibSession\": \"xxxx\", \"Node\": \"MediaLibPlaylist\", \"ItemID\" : \"yyyy\"}}"
+    cmd = cmd.replacingOccurrences(of:"xxxx", with:mediaLibSession)
+    cmd = cmd.replacingOccurrences(of:"yyyy", with:String(playlistId))
+    let resp = executeBurmiHttpRequest(cmd: cmd, timeout: TIMEOUT_LONG_MS)
+    let trackList = (resp["ExtItemGet"]?["ExtItemList"] as? [Dictionary<String, AnyObject>])
+    for i in 0..<trackList!.count {
+        var cmdAdd = "{\"Media_Obj\": \"zzzz\", \"AudioPlayList\": {\"Method\": \"AddSongWithID\", \"Parameters\": \"xxxx\"}}"
+        cmdAdd = cmdAdd.replacingOccurrences(of:"xxxx", with:String((trackList![i]["orig_id"] as? Int)!))
+        cmdAdd = cmdAdd.replacingOccurrences(of:"zzzz", with:player)
+        _ = executeBurmiHttpRequest(cmd: cmdAdd, timeout: TIMEOUT_LONG_MS)
+    }
 }
 //
 // Retrieves the lyrics of the given song from Genius, if it exists
@@ -788,7 +832,7 @@ func retrieveLyrics(artist: String, title: String) -> String {
     titleUrl = titleUrl.replacingOccurrences(of:"[!+.']", with:"", options: [.regularExpression])
     let url = "https://genius.com/" + firstLetter + remainingLetters + "-" + titleUrl + "-lyrics"
     let resp = executeGenericHttpRequest(url: url, timeout: TIMEOUT_NORM_MS)
-    print("url for lyrics: " + url  )
+    print("url for lyrics: " + url)
     do {
         let doc: Document = try SwiftSoup.parse(resp)
         var retValue = ""
@@ -885,6 +929,7 @@ extension URLSession {
 // TODO Document Macht das, was im Python folgendes ist "BurmiHTTPCall.executeGet(f"{IP}/{tmp_cmd}")"
 func executeGenericHttpRequest(url: String, timeout: Int) -> (String) {
     var request = URLRequest(url: URL(string: url)!)
+    print("Generic URL: \(url)")
     request.httpMethod = "GET"
     let (data, _, _) = URLSession.shared.synchronousDataTask(urlrequest: request, timeout: timeout)
     let contents = String(data: data ?? Data.init(), encoding: .utf8)
