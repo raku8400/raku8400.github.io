@@ -559,7 +559,7 @@ let TIMEOUT_NORM_MS = 200  // Note: 100 was too low, 150
 let TIMEOUT_LONG_MS = 5000
 //
 // IP under which the Burmi device is accessible
-let IP = "192.168.1.106"  // es war auch schon mal 115
+let IP = "192.168.1.117"  // es war auch schon mal 115 und 106 und 111
 //let IP = "musiccenter151.local" -> gibt nur die HTML Seite zurück, aber keine Info über die IP Adresse
 
 
